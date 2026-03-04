@@ -230,6 +230,54 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
         }
     });
 
+    // --- Workspace File Browser / Downloader ---
+
+    app.get('/api/workspace/files', (req, res) => {
+        try {
+            const targetDir = req.query.dir ? path.resolve(config.DEFAULT_WORKING_DIR, req.query.dir) : config.DEFAULT_WORKING_DIR;
+            // Prevent traversal outside the working directory explicitly
+            if (!targetDir.startsWith(path.resolve(config.DEFAULT_WORKING_DIR))) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+            if (!fs.existsSync(targetDir)) return res.json([]);
+
+            const items = fs.readdirSync(targetDir, { withFileTypes: true });
+            const list = items.map(item => {
+                let size = 0;
+                let lastModified = 0;
+                try {
+                    const stats = fs.statSync(path.join(targetDir, item.name));
+                    size = stats.size;
+                    lastModified = stats.mtimeMs;
+                } catch (e) { }
+                return {
+                    name: item.name,
+                    isDirectory: item.isDirectory(),
+                    size,
+                    lastModified,
+                    path: path.relative(config.DEFAULT_WORKING_DIR, path.join(targetDir, item.name)).replace(/\\/g, '/')
+                };
+            }).sort((a, b) => b.isDirectory - a.isDirectory || a.name.localeCompare(b.name));
+
+            res.json(list);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    app.get('/api/workspace/download', (req, res) => {
+        try {
+            const file = req.query.path;
+            if (!file) return res.status(400).send('Missing file path');
+            const targetPath = path.resolve(config.DEFAULT_WORKING_DIR, file);
+            if (!targetPath.startsWith(path.resolve(config.DEFAULT_WORKING_DIR))) return res.status(403).send('Access denied');
+            if (!fs.existsSync(targetPath)) return res.status(404).send('File not found');
+            res.download(targetPath);
+        } catch (error) {
+            res.status(500).send(error.message);
+        }
+    });
+
     app.listen(port, () => {
         console.log(`[Dashboard] 🌐 Web Dashboard is running on port ${port}`);
     });

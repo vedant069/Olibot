@@ -465,6 +465,13 @@
                 <h2 class="text-xs uppercase tracking-widest font-bold t-text-muted"
                     style="font-family: Poppins, sans-serif;">Session History</h2>
                 <div class="flex items-center gap-2">
+                    <button onclick="showWorkspacePanel()" title="Workspace Files"
+                        class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] p-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                    </button>
                     <button onclick="showPhonesPanel()" title="Manage Authorized Numbers"
                         class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] p-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -591,7 +598,38 @@
                     <!-- Input Row -->
                     <div
                         class="relative rounded-xl shadow-2xl t-card pointer-events-auto border focus-within:border-[#3249d7]/50 focus-within:ring-2 focus-within:ring-[#3249d7]/20 transition-all">
-                        <!-- Hidden file input -->
+                        <!-- Workspace Files Explorer Panel -->
+                        <div id="workspace-panel"
+                            class="hidden flex-1 overflow-y-auto w-full max-h-screen bg-[#f8f9fa] dark:bg-gray-900 absolute inset-0 z-30 flex flex-col pt-16 md:pt-0">
+                            <div
+                                class="sticky top-0 z-10 px-6 md:px-10 py-5 bg-white/95 dark:bg-[#1a1c23]/95 backdrop-blur-sm border-b shadow-sm t-border t-card flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-xl md:text-2xl font-bold t-text-primary mb-1 tracking-tight"
+                                        style="font-family: Inter, Poppins, sans-serif;">
+                                        Workspace Files
+                                    </h2>
+                                    <p class="text-xs md:text-sm t-text-muted font-medium flex items-center gap-1.5">
+                                        <span id="current-dir-path"
+                                            class="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">/home/ubuntu</span>
+                                    </p>
+                                </div>
+                                <button onclick="hideWorkspacePanel()" title="Close Browser"
+                                    class="text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Content / Files Grid -->
+                            <div class="p-6 md:p-10 max-w-5xl w-full mx-auto">
+                                <div id="files-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <!-- populated via JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Header -->file input -->
                         <input id="image-file-input" type="file" accept="*" multiple class="hidden"
                             onchange="[...this.files].forEach(f => handleFile(f)); this.value=''">
                         <textarea id="chat-textarea" rows="1" placeholder="Type a message… or paste/drop an image"
@@ -1157,6 +1195,99 @@
                 ['workspace-header', 'workspace-content', 'workspace-input-area'].forEach(id => {
                     document.getElementById(id)?.classList.remove('hidden');
                 });
+            }
+        }
+
+        // ── Workspace Files Management ──────────────────────────
+        let currentWorkspaceDir = '';
+        function showWorkspacePanel() {
+            document.getElementById('workspace-panel').classList.remove('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('phones-panel').classList.add('hidden');
+            ['workspace-header', 'workspace-content', 'workspace-input-area'].forEach(id => {
+                document.getElementById(id)?.classList.add('hidden');
+            });
+            fetchWorkspaceFiles(currentWorkspaceDir);
+        }
+
+        function hideWorkspacePanel() {
+            document.getElementById('workspace-panel').classList.add('hidden');
+            if (!currentSessionId) {
+                document.getElementById('empty-state').classList.remove('hidden');
+            } else {
+                ['workspace-header', 'workspace-content', 'workspace-input-area'].forEach(id => {
+                    document.getElementById(id)?.classList.remove('hidden');
+                });
+            }
+        }
+
+        async function fetchWorkspaceFiles(dir = '') {
+            currentWorkspaceDir = dir;
+            const list = document.getElementById('files-list');
+            document.getElementById('current-dir-path').textContent = '/home/ubuntu' + (dir ? '/' + dir : '');
+
+            list.innerHTML = '<div class="col-span-full py-10 text-center text-gray-400">Loading files...</div>';
+
+            try {
+                const res = await fetch(`/api/workspace/files?dir=${encodeURIComponent(dir)}`);
+                const files = await res.json();
+
+                if (files.error) {
+                    list.innerHTML = `<div class="col-span-full py-10 text-center text-red-500">${files.error}</div>`;
+                    return;
+                }
+
+                list.innerHTML = '';
+
+                // Add up-dir option if not root
+                if (dir) {
+                    const upDir = dir.includes('/') ? dir.substring(0, dir.lastIndexOf('/')) : '';
+                    const wrap = document.createElement('div');
+                    wrap.className = 't-card border rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:bg-[#3249d7]/5 transition-all w-full';
+                    wrap.style.borderColor = 'rgba(50,73,215,0.1)';
+                    wrap.onclick = () => fetchWorkspaceFiles(upDir);
+                    wrap.innerHTML = `
+                        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                            <span class="text-xl">🔙</span>
+                        </div>
+                        <div class="flex-1 overflow-hidden font-semibold t-text-primary tracking-tight">.. (up dir)</div>
+                    `;
+                    list.appendChild(wrap);
+                }
+
+                if (!files.length && !dir) {
+                    list.innerHTML = '<div class="col-span-full text-center t-text-muted py-8">No files generated yet.</div>';
+                    return;
+                }
+
+                files.forEach(f => {
+                    const wrap = document.createElement('div');
+                    wrap.className = 't-card border rounded-xl p-3 flex items-center gap-3 transition-all hover:bg-[#3249d7]/5 group relative w-full overflow-hidden';
+                    wrap.style.borderColor = 'rgba(50,73,215,0.15)';
+
+                    const icon = f.isDirectory ? '📁' : '📄';
+                    const downloadBtn = !f.isDirectory ? `
+                        <a href="/api/workspace/download?path=${encodeURIComponent(f.path)}" target="_blank" download class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-[#3249d7] text-white opacity-0 group-hover:opacity-100 transition shadow-lg cursor-pointer flex items-center gap-1.5 text-xs font-semibold z-10">
+                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download
+                        </a>
+                    ` : '';
+
+                    wrap.innerHTML = `
+                        <div class="w-10 h-10 rounded-lg bg-[#3249d7]/10 flex items-center justify-center shrink-0">
+                            <span class="text-xl opacity-80">${icon}</span>
+                        </div>
+                        <div class="flex-1 min-w-0 pr-24 relative z-0">
+                            <div class="font-medium text-sm t-text-primary truncate block hover:clip-none hover:whitespace-normal group-hover:pr-0 cursor-pointer" onclick="${f.isDirectory ? `fetchWorkspaceFiles('${f.path}')` : `window.open('/api/workspace/download?path=${encodeURIComponent(f.path)}', '_blank')`}" title="${escapeHtml(f.name)}">
+                                ${escapeHtml(f.name)}
+                            </div>
+                            ${f.isDirectory ? '' : `<div class="text-[10px] t-text-muted mt-0.5 truncate uppercase tracking-widest">${(f.size / 1024).toFixed(1)} KB &bull; ${new Date(f.lastModified).toLocaleString()}</div>`}
+                        </div>
+                        ${downloadBtn}
+                    `;
+                    list.appendChild(wrap);
+                });
+            } catch (e) {
+                list.innerHTML = '<div class="col-span-full text-center text-red-400 py-8">Network error loading files.</div>';
             }
         }
 
