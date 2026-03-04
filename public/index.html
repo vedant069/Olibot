@@ -445,10 +445,9 @@
             <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                 <div class="theme-toggle-knob"></div>
             </div>
-            <select id="user-phone"
+            <select id="user-phone" title="Switch your active number for this session"
                 class="t-input border rounded-md text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 focus:ring-1 focus:ring-[#3249d7] outline-none max-w-[120px] md:max-w-none cursor-pointer">
-                <option value="919970870091">Dev 1</option>
-                <option value="917304556268">Dev 2</option>
+                <!-- Dynamically populated from /api/phones -->
             </select>
         </div>
     </header>
@@ -942,9 +941,14 @@
 
         async function sendMessage() {
             const val = textarea.value.trim();
-            if (!val && !pendingImageToken) return;   // need text OR image
+            if (!val && !pendingImages.length) return;   // need text OR image
 
             const phone = document.getElementById('user-phone').value;
+            if (!phone) {
+                alert("Please add an authorized phone number first in the 'Manage numbers' section.");
+                return;
+            }
+
             textarea.value = '';
             textarea.style.height = 'auto';
             textarea.disabled = true;
@@ -1127,8 +1131,10 @@
         document.head.appendChild(animStyle);
 
         // Core Init
-        fetchStats();
-        fetchSessions(1);
+        fetchPhones().then(() => {
+            fetchStats();
+            fetchSessions(1);
+        });
         setInterval(fetchStats, 10000);
         setInterval(() => fetchSessions(currentSessionPage), 10000);
         // ── Phone Management ──────────────────────────────────
@@ -1159,6 +1165,23 @@
             try {
                 const res = await fetch('/api/phones');
                 const phones = await res.json();
+
+                // Update dropdown
+                const select = document.getElementById('user-phone');
+                const currentVal = select.value;
+                select.innerHTML = '';
+                if (!phones.length) {
+                    select.innerHTML = '<option value="">No numbers added</option>';
+                } else {
+                    phones.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.phone;
+                        opt.textContent = p.label ? `${p.label} (${p.phone})` : p.phone;
+                        select.appendChild(opt);
+                    });
+                    if (phones.find(p => p.phone === currentVal)) select.value = currentVal;
+                }
+
                 if (!phones.length) {
                     list.innerHTML = '<div class="text-center t-text-muted text-sm py-8">No authorized numbers yet. Add one above!</div>';
                     return;

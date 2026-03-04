@@ -84,6 +84,18 @@ async function sendContent(phone, content, prefix = '') {
     }
 }
 
+async function broadcastToSubscribers(session, message, prefix = '') {
+    const phones = session.subscribers_arr || [session.user_phone];
+    for (const phone of phones) {
+        if (!phone) continue;
+        if (prefix) {
+            await sendContent(phone, message, prefix);
+        } else {
+            await wa.sendMessage(phone, message);
+        }
+    }
+}
+
 // ── Claude Code event handlers ────────────────────────────────
 
 claude.on('result', async ({ sessionId, content, costUsd }) => {
@@ -95,23 +107,21 @@ claude.on('result', async ({ sessionId, content, costUsd }) => {
     if (webMutedSessions.has(sessionId)) return;
 
     if (!content) {
-        await wa.sendMessage(session.user_phone, `✅ *Done!*`);
+        await broadcastToSubscribers(session, `✅ *Done!*`);
         return;
     }
 
     // Dedup: if assistant_message already sent this content, only send the ✅ footer
     if (lastSentContent.get(sessionId) === content) {
-        await wa.sendMessage(session.user_phone, `✅ *Done!*`);
+        await broadcastToSubscribers(session, `✅ *Done!*`);
     } else {
-        await sendContent(session.user_phone, content, '✅ *Result:*');
+        await broadcastToSubscribers(session, content, '✅ *Result:*');
         lastSentContent.set(sessionId, content);
     }
 });
 
 claude.on('assistant_message', async ({ sessionId, content }) => {
     if (!content || content.length < 30) return;
-
-    // (DB storage is handled natively in claude_manager via upsert)
 
     if (webMutedSessions.has(sessionId)) return;
     const session = store.getSession(sessionId);
@@ -121,7 +131,7 @@ claude.on('assistant_message', async ({ sessionId, content }) => {
     if (lastSentContent.get(sessionId) === content) return;
     lastSentContent.set(sessionId, content);
 
-    await sendContent(session.user_phone, content, '🔄 *Working...*');
+    await broadcastToSubscribers(session, content, '🔄 *Working...*');
 });
 
 claude.on('session_end', async ({ sessionId, code, status, costUsd }) => {
@@ -135,7 +145,7 @@ claude.on('session_end', async ({ sessionId, code, status, costUsd }) => {
 
     if (status === 'failed' && !wasMuted) {
         const costInfo = costUsd ? ` (cost: $${Number(costUsd).toFixed(4)})` : '';
-        await wa.sendMessage(session.user_phone,
+        await broadcastToSubscribers(session,
             `❌ Session *${sessionId}* ended unexpectedly${costInfo}.\nSend a new task to start a fresh session.`
         );
     }
@@ -145,7 +155,7 @@ claude.on('session_error', async ({ sessionId, error }) => {
     if (webMutedSessions.has(sessionId)) return;
     const session = store.getSession(sessionId);
     if (!session) return;
-    await wa.sendMessage(session.user_phone, `⚠️ *Error:* ${error}`);
+    await broadcastToSubscribers(session, `⚠️ *Error:* ${error}`);
 });
 
 // ── WhatsApp message handler ──────────────────────────────────
@@ -283,7 +293,9 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid, i
                 // without an actual coding command (e.g., "resume WA-123")
                 if (intent.task === "") {
                     // Reroute replies to the person who is resuming
-                    store.updateSession(target.id, { thread_open: 1, user_phone: threadKey });
+                    let subs = target.subscribers_arr || [target.user_phone];
+                    if (!subs.includes(threadKey)) subs.push(threadKey);
+                    store.updateSession(target.id, { thread_open: 1, user_phone: threadKey, subscribers_arr: subs });
 
                     if (isWeb) {
                         webMutedSessions.add(target.id);
@@ -301,8 +313,10 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid, i
                     await wa.sendMessage(replyTo, intent.reply || `🔄 Continuing session *${target.id}*...`);
                 }
 
-                // Reroute replies to the person who is resuming this session
-                store.updateSession(target.id, { user_phone: threadKey });
+                // Reroute replies to the person who is resuming this session, and add them as a subscriber
+                let subs = target.subscribers_arr || [target.user_phone];
+                if (!subs.includes(threadKey)) subs.push(threadKey);
+                store.updateSession(target.id, { user_phone: threadKey, subscribers_arr: subs });
 
                 // Fetch recent messages to generate an automatic recap of progress
                 const messages = store.getMessages(target.id, 10);

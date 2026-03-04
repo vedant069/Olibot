@@ -46,17 +46,29 @@ class SessionStore {
         try {
             this.db.exec('ALTER TABLE sessions ADD COLUMN thread_open INTEGER DEFAULT 1');
         } catch (_) { /* column already exists */ }
+        // Safely add subscribers column to existing databases
+        try {
+            this.db.exec("ALTER TABLE sessions ADD COLUMN subscribers TEXT DEFAULT '[]'");
+        } catch (_) { /* column already exists */ }
     }
 
     createSession(id, userPhone, task, claudeSessionId, workingDir) {
+        const initialSubscribers = JSON.stringify([String(userPhone)]);
         this.db.prepare(
-            'INSERT INTO sessions (id, user_phone, task, claude_session_id, working_dir) VALUES (?, ?, ?, ?, ?)'
-        ).run(id, userPhone, task, claudeSessionId, workingDir || config.DEFAULT_WORKING_DIR);
+            'INSERT INTO sessions (id, user_phone, task, claude_session_id, working_dir, subscribers) VALUES (?, ?, ?, ?, ?, ?)'
+        ).run(id, String(userPhone), task, claudeSessionId, workingDir || config.DEFAULT_WORKING_DIR, initialSubscribers);
         return this.getSession(id);
     }
 
     getSession(id) {
-        return this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
+        const session = this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
+        if (session && session.subscribers) {
+            try { session.subscribers_arr = JSON.parse(session.subscribers); }
+            catch (e) { session.subscribers_arr = [session.user_phone]; }
+        } else if (session) {
+            session.subscribers_arr = [session.user_phone];
+        }
+        return session;
     }
 
     getActiveSessions(userPhone) {
@@ -92,8 +104,14 @@ class SessionStore {
         const fields = [];
         const values = [];
         for (const [key, val] of Object.entries(updates)) {
-            fields.push(`${key} = ?`);
-            values.push(val);
+            // handle arrays (like subscribers)
+            if (key === 'subscribers_arr') {
+                fields.push(`subscribers = ?`);
+                values.push(JSON.stringify(val));
+            } else {
+                fields.push(`${key} = ?`);
+                values.push(val);
+            }
         }
         fields.push('updated_at = CURRENT_TIMESTAMP');
         values.push(id);
@@ -132,11 +150,21 @@ class SessionStore {
      * Returns null if no open thread exists (user closed it or never started).
      */
     getCurrentThread(userPhone) {
-        return this.db.prepare(
+        // Find session where user_phone is the primary OR user is in the JSON array of subscribers
+        const phoneParam = String(userPhone);
+        const likeParam = `%"${phoneParam}"%`;
+        const session = this.db.prepare(
             `SELECT * FROM sessions
-             WHERE user_phone = ? AND thread_open = 1 AND claude_session_id IS NOT NULL
+             WHERE (user_phone = ? OR subscribers LIKE ?) AND thread_open = 1 AND claude_session_id IS NOT NULL
              ORDER BY updated_at DESC LIMIT 1`
-        ).get(userPhone);
+        ).get(phoneParam, likeParam);
+        if (session && session.subscribers) {
+            try { session.subscribers_arr = JSON.parse(session.subscribers); }
+            catch (e) { session.subscribers_arr = [session.user_phone]; }
+        } else if (session) {
+            session.subscribers_arr = [session.user_phone];
+        }
+        return session;
     }
 
     /**
@@ -152,11 +180,14 @@ class SessionStore {
      * Called when user says "done", "close", "new task", etc.
      */
     closeThread(userPhone) {
+        const phoneParam = String(userPhone);
+        const likeParam = `%"${phoneParam}"%`;
         this.db.prepare(
             `UPDATE sessions SET thread_open = 0, updated_at = CURRENT_TIMESTAMP
-             WHERE user_phone = ? AND thread_open = 1`
-        ).run(userPhone);
+             WHERE (user_phone = ? OR subscribers LIKE ?) AND thread_open = 1`
+        ).run(phoneParam, likeParam);
     }
+
     /**
      * Mark all currently running sessions as stopped (useful on server restart)
      */
