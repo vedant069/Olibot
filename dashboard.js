@@ -104,9 +104,10 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
                 ? String(text)
                 : `[start fresh] ${String(text)}`;
 
-            // Resolve any attached image
-            const imagePath = req.body.imageToken ? pendingImages.get(req.body.imageToken) || null : null;
-            if (req.body.imageToken) pendingImages.delete(req.body.imageToken);
+            // Resolve any attached images (array of tokens)
+            const tokens = Array.isArray(req.body.imageTokens) ? req.body.imageTokens : (req.body.imageToken ? [req.body.imageToken] : []);
+            const imagePaths = tokens.map(t => { const p = pendingImages.get(t); pendingImages.delete(t); return p; }).filter(Boolean);
+            const imagePath = imagePaths[0] || null; // Claude gets the first; TODO: multi-image
 
             console.log(`[Dashboard] Dispatching START_SESSION for ${phone} with task: ${startInstruction}`);
             const result = await messageHandler({
@@ -135,9 +136,10 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
             const session = store.getSession(sessionId);
             if (!session) return res.status(404).json({ error: 'Session not found' });
 
-            // Resolve any attached image
-            const imagePath = req.body.imageToken ? pendingImages.get(req.body.imageToken) || null : null;
-            if (req.body.imageToken) pendingImages.delete(req.body.imageToken);
+            // Resolve any attached images (array of tokens)
+            const tokens = Array.isArray(req.body.imageTokens) ? req.body.imageTokens : (req.body.imageToken ? [req.body.imageToken] : []);
+            const imagePaths = tokens.map(t => { const p = pendingImages.get(t); pendingImages.delete(t); return p; }).filter(Boolean);
+            const imagePath = imagePaths[0] || null;
 
             const resumeInstruction = `[resume ${sessionId}] ${text}`;
 
@@ -154,20 +156,34 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
         }
     });
 
-    // --- Image Upload ---
+    // --- File Upload (any file type: images, Excel, Word, PDF, etc.) ---
 
-    app.post('/api/upload-image', express.raw({ type: 'application/octet-stream', limit: '20mb' }), (req, res) => {
+    const uploadHandler = express.raw({ type: '*/*', limit: '50mb' });
+
+    app.post('/api/upload-file', uploadHandler, (req, res) => {
         try {
-            const mimeType = req.headers['x-mime-type'] || 'image/png';
-            const ext = mimeType.split('/')[1]?.split(';')[0] || 'png';
-            const imagePath = `/tmp/dash-img-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-            fs.writeFileSync(imagePath, req.body);
-            const token = storePendingImage(imagePath);
+            const mimeType = req.headers['x-mime-type'] || 'application/octet-stream';
+            let origName = 'file';
+            try {
+                if (req.headers['x-file-name']) {
+                    origName = decodeURIComponent(req.headers['x-file-name']);
+                }
+            } catch (e) {
+                // Ignore invalid encoding
+            }
+            const safeName = origName.replace(/[^a-zA-Z0-9.\u0080-\uFFFF_-]/g, '_');
+            const ext = path.extname(safeName) || '.' + (mimeType.split('/')[1]?.split(';')[0] || 'bin');
+            const filePath = `/tmp/dash-file-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+            fs.writeFileSync(filePath, req.body);
+            const token = storePendingImage(filePath);
             res.json({ success: true, token });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
     });
+
+    // Backward compat alias
+    app.post('/api/upload-image', uploadHandler, (req, res) => res.redirect(307, '/api/upload-file'));
 
     // --- Phone Management Endpoints ---
 

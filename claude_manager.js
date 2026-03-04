@@ -114,9 +114,9 @@ class ClaudeManager extends EventEmitter {
 
 
     _spawnNew(sessionId, prompt, workingDir, imagePath = null) {
-        const imageRef = this._prepareImage(imagePath, workingDir);
-        const fullPrompt = imageRef
-            ? `${KB_HINT}\n\n${imageRef}\n\n${prompt}`
+        const fileRef = this._prepareFile(imagePath, workingDir);
+        const fullPrompt = fileRef
+            ? `${KB_HINT}\n\n${fileRef}\n\n${prompt}`
             : `${KB_HINT}\n\n${prompt}`;
         const args = [
             '--print',
@@ -151,8 +151,8 @@ class ClaudeManager extends EventEmitter {
     // ── Internal: resume existing session ─────────────────────
 
     _spawnResume(sessionId, claudeSessionId, followUp, workingDir, baseCost = 0, imagePath = null) {
-        const imageRef = this._prepareImage(imagePath, workingDir);
-        const fullFollowUp = imageRef ? `${imageRef}\n\n${followUp}` : followUp;
+        const fileRef = this._prepareFile(imagePath, workingDir);
+        const fullFollowUp = fileRef ? `${fileRef}\n\n${followUp}` : followUp;
         const args = [
             '--resume', claudeSessionId,
             '--print',
@@ -168,20 +168,27 @@ class ClaudeManager extends EventEmitter {
     }
 
     /**
-     * Copy image to the working directory and return a reference string for the prompt.
-     * Returns null if no image provided.
+     * Copy any file (image, PDF, Excel, Word, etc.) to the working directory
+     * and return a reference string for the Claude prompt.
+     * Returns null if no file provided.
      */
-    _prepareImage(imagePath, workingDir) {
-        if (!imagePath || !fs.existsSync(imagePath)) return null;
+    _prepareFile(filePath, workingDir) {
+        if (!filePath || !fs.existsSync(filePath)) return null;
         try {
-            const destName = `context-image-${Date.now()}${path.extname(imagePath)}`;
+            const ext = path.extname(filePath);
+            const origName = path.basename(filePath);
+            const destName = `context-file-${Date.now()}${ext}`;
             const dest = path.join(workingDir || config.DEFAULT_WORKING_DIR, destName);
-            fs.copyFileSync(imagePath, dest);
+            fs.copyFileSync(filePath, dest);
             // Clean up the tmp source
-            try { fs.unlinkSync(imagePath); } catch (_) { }
-            return `[Image attached — file saved at: ${dest}. Please read/view this image as part of the task.]`;
+            try { fs.unlinkSync(filePath); } catch (_) { }
+            const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'].includes(ext.toLowerCase());
+            const hint = isImage
+                ? `[Image attached — saved at: ${dest}. Please view/read this image as part of the task.]`
+                : `[File attached (${origName}) — saved at: ${dest}. Please read/analyze this file as part of the task.]`;
+            return hint;
         } catch (err) {
-            console.error(`[Claude] Failed to prepare image: ${err.message}`);
+            console.error(`[Claude] Failed to prepare file: ${err.message}`);
             return null;
         }
     }

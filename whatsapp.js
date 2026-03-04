@@ -239,17 +239,32 @@ class WhatsAppBridge extends EventEmitter {
                     || msg.message?.imageMessage?.caption
                     || '';
 
-                // Handle image messages — download and save to /tmp
+                // Handle image/document messages — download and save to /tmp
                 let imagePath = null;
-                if (msg.message?.imageMessage) {
+                const imgMsg = msg.message?.imageMessage;
+                const docMsg = msg.message?.documentMessage;
+
+                if (imgMsg) {
                     try {
                         const buffer = await downloadMediaMessage(msg, 'buffer', {});
-                        const ext = msg.message.imageMessage.mimetype?.split('/')?.[1]?.split(';')?.[0] || 'jpg';
+                        const ext = imgMsg.mimetype?.split('/')?.[1]?.split(';')?.[0] || 'jpg';
                         imagePath = `/tmp/wa-img-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
                         fs.writeFileSync(imagePath, buffer);
                         console.log(`[WhatsApp] Image saved: ${imagePath}`);
                     } catch (err) {
                         console.error(`[WhatsApp] Failed to download image: ${err.message}`);
+                    }
+                } else if (docMsg) {
+                    try {
+                        const buffer = await downloadMediaMessage(msg, 'buffer', {});
+                        // Use the original filename if available, otherwise derive from mimetype
+                        const origName = docMsg.fileName || `document.${docMsg.mimetype?.split('/')?.[1]?.split(';')?.[0] || 'bin'}`;
+                        const safeExt = path.extname(origName) || '.bin';
+                        imagePath = `/tmp/wa-doc-${Date.now()}-${Math.random().toString(36).slice(2)}${safeExt}`;
+                        fs.writeFileSync(imagePath, buffer);
+                        console.log(`[WhatsApp] Document saved: ${imagePath} (${origName})`);
+                    } catch (err) {
+                        console.error(`[WhatsApp] Failed to download document: ${err.message}`);
                     }
                 }
 

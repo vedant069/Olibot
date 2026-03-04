@@ -584,23 +584,17 @@
             <div id="workspace-input-area"
                 class="absolute bottom-0 left-0 right-0 p-3 md:p-6 t-input-area-bg pt-6 md:pt-12 z-30 hidden pointer-events-none">
                 <div class="max-w-4xl mx-auto">
-                    <!-- Image Preview Chip -->
-                    <div id="image-preview-bar" class="hidden flex items-center gap-2 mb-2 pointer-events-auto">
-                        <div class="flex items-center gap-2 t-card border rounded-lg px-3 py-1.5 text-xs t-text-secondary"
-                            style="border-color:rgba(50,73,215,0.25);">
-                            <img id="image-preview-thumb" src="" alt="preview" class="w-8 h-8 object-cover rounded">
-                            <span id="image-preview-name" class="max-w-[160px] truncate">image.png</span>
-                            <button onclick="clearImage()"
-                                class="ml-1 text-red-400 hover:text-red-300 cursor-pointer text-base leading-none">&times;</button>
-                        </div>
-                        <span class="text-[10px] t-text-muted">Image will be sent with your message</span>
+                    <!-- Image Preview Grid (multiple images) -->
+                    <div id="image-preview-bar" class="hidden mb-2 pointer-events-auto">
+                        <div id="image-preview-grid" class="flex flex-wrap gap-2 items-end"></div>
+                        <p class="text-[10px] t-text-muted mt-1">Images will be sent with your message</p>
                     </div>
                     <!-- Input Row -->
                     <div
                         class="relative rounded-xl shadow-2xl t-card pointer-events-auto border focus-within:border-[#3249d7]/50 focus-within:ring-2 focus-within:ring-[#3249d7]/20 transition-all">
                         <!-- Hidden file input -->
-                        <input id="image-file-input" type="file" accept="image/*" class="hidden"
-                            onchange="handleImageFile(this.files[0])">
+                        <input id="image-file-input" type="file" accept="*" multiple class="hidden"
+                            onchange="[...this.files].forEach(f => handleFile(f)); this.value=''">
                         <textarea id="chat-textarea" rows="1" placeholder="Type a message… or paste/drop an image"
                             class="w-full bg-transparent px-3 md:px-5 py-3 md:py-4 pr-20 md:pr-24 resize-none outline-none overflow-y-auto max-h-36 md:max-h-48 leading-relaxed font-medium text-sm md:text-base t-text-primary"
                             style="color: inherit;"></textarea>
@@ -639,8 +633,8 @@
         let currentSessionId = null;
         let isCreatingNew = false;
         let loopInterval = null;
-        let pendingImageToken = null; // token returned by /api/upload-image
-        let pendingImageDataUrl = null; // for preview only
+        // Multi-image queue: array of { token, dataUrl, name }
+        let pendingImages = [];
 
         // Theme Management
         function getTheme() {
@@ -969,13 +963,13 @@
                         </div>
                     `;
 
-                    const imageToken = pendingImageToken;
-                    clearImage();
+                    const imageTokens = pendingImages.map(p => p.token).filter(Boolean);
+                    clearAllImages();
 
                     const resAPI = await fetch('/api/sessions/start', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone, text: val, imageToken })
+                        body: JSON.stringify({ phone, text: val, imageTokens })
                     });
                     const result = await resAPI.json();
 
@@ -999,18 +993,24 @@
                     if (maxW) {
                         const div = document.createElement('div');
                         div.className = "flex flex-col w-full items-end opacity-70 animate-[slideUp_0.2s_ease-out]";
-                        div.innerHTML = `<div class="max-w-[85%] md:max-w-[70%] rounded-2xl px-5 py-3.5 text-white shadow-md break-words" style="background: var(--pl-primary); box-shadow: 0 4px 14px rgba(50,73,215,0.25);"><div class="whitespace-pre-wrap font-medium text-[15px] leading-relaxed">${escapeHtml(val)}</div></div>`;
+                        // Build image grid html
+                        const imgs = pendingImages.map(p => {
+                            if (p.isImage) return `<img src="${p.dataUrl}" class="w-24 h-24 object-cover rounded-xl border border-white/20 shadow-md" alt="attached" title="${escapeHtml(p.name)}">`;
+                            return `<div class="w-24 h-24 p-2 rounded-xl flex flex-col items-center justify-center border border-white/30 bg-white/10 shadow-md text-white overflow-hidden text-center" title="${escapeHtml(p.name)}"><svg class="w-8 h-8 mb-1 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span class="text-[9px] break-all leading-tight opacity-90 w-full truncate">${escapeHtml(p.name)}</span></div>`;
+                        }).join('');
+                        const imgBar = pendingImages.length ? `<div class="flex flex-wrap gap-1.5 mb-2">${imgs}</div>` : '';
+                        div.innerHTML = `<div class="max-w-[85%] md:max-w-[70%] rounded-2xl px-5 py-3.5 text-white shadow-md break-words" style="background: var(--pl-primary); box-shadow: 0 4px 14px rgba(50,73,215,0.25);">${imgBar}${val ? `<div class="whitespace-pre-wrap font-medium text-[15px] leading-relaxed">${escapeHtml(val)}</div>` : ''}</div>`;
                         maxW.appendChild(div);
                         content.scrollTo({ top: content.scrollHeight, behavior: 'smooth' });
                     }
 
-                    const imageToken = pendingImageToken;
-                    clearImage();
+                    const imageTokens = pendingImages.map(p => p.token).filter(Boolean);
+                    clearAllImages();
 
                     await fetch(`/api/sessions/${currentSessionId}/message`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone, text: `[resume ${currentSessionId}] ${val || '(image)'}`, imageToken })
+                        body: JSON.stringify({ phone, text: `[resume ${currentSessionId}] ${val || '(image)'}`, imageTokens })
                     });
 
                     pollMessages();
@@ -1030,49 +1030,90 @@
                 .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        // ── Image Handling ────────────────────────────────────────
-        async function handleImageFile(file) {
-            if (!file || !file.type.startsWith('image/')) return;
-            // Show preview immediately
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                pendingImageDataUrl = e.target.result;
-                document.getElementById('image-preview-thumb').src = e.target.result;
-                document.getElementById('image-preview-name').textContent = file.name || 'image';
-                document.getElementById('image-preview-bar').classList.remove('hidden');
-            };
-            reader.readAsDataURL(file);
+        // ── File Handling (multi-file) ────────────────────────────────
+        async function handleFile(file) {
+            if (!file) return;
+
+            const isImage = file.type.startsWith('image/');
+            const entry = { token: null, dataUrl: null, name: file.name || 'file', isImage };
+            const idx = pendingImages.length;
+            pendingImages.push(entry);
+
+            if (isImage) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    entry.dataUrl = e.target.result;
+                    renderImagePreviews();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                renderImagePreviews(); // render document icon
+            }
+
             // Upload to server
             try {
                 const buf = await file.arrayBuffer();
-                const res = await fetch('/api/upload-image', {
+                // Send custom header X-File-Name (ASCII-safe encoding) to preserve original doc name
+                const safeName = encodeURIComponent(file.name || 'file');
+                const res = await fetch('/api/upload-file', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/octet-stream', 'X-Mime-Type': file.type },
+                    headers: { 'Content-Type': 'application/octet-stream', 'X-Mime-Type': file.type, 'X-File-Name': safeName },
                     body: buf
                 });
                 const data = await res.json();
-                if (data.token) pendingImageToken = data.token;
-                else console.error('Image upload failed', data);
+                if (data.token) entry.token = data.token;
+                else console.error('Upload failed', data);
             } catch (e) {
-                console.error('Image upload error', e);
+                console.error('Upload error', e);
             }
+            renderImagePreviews(); // re-render to strip 'uploading...' tag
         }
 
-        function clearImage() {
-            pendingImageToken = null;
-            pendingImageDataUrl = null;
+        function renderImagePreviews() {
+            const grid = document.getElementById('image-preview-grid');
+            const bar = document.getElementById('image-preview-bar');
+            if (!pendingImages.length) { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            grid.innerHTML = '';
+            pendingImages.forEach((p, i) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'relative group w-20 h-20 rounded-xl border t-card shadow-md flex items-center justify-center overflow-hidden';
+                wrap.style.borderColor = 'rgba(50,73,215,0.25)';
+
+                if (p.isImage && p.dataUrl) {
+                    wrap.innerHTML = `<img src="${p.dataUrl}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover transition-all group-hover:opacity-80">`;
+                } else {
+                    wrap.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full p-1 bg-gray-50 dark:bg-gray-800 text-gray-500 overflow-hidden text-center"><svg class="w-6 h-6 mb-1 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span class="text-[8px] leading-tight w-full break-words truncate px-1">${escapeHtml(p.name)}</span></div>`;
+                }
+
+                wrap.innerHTML += `
+                    <span class="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-xs cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity leading-none" onclick="removeImage(${i})" title="Remove">×</span>
+                    ${!p.token ? '<span class="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded backdrop-blur-sm">uploading…</span>' : ''}
+                `;
+                grid.appendChild(wrap);
+            });
+        }
+
+        function removeImage(idx) {
+            pendingImages.splice(idx, 1);
+            renderImagePreviews();
+        }
+
+        function clearAllImages() {
+            pendingImages = [];
             document.getElementById('image-preview-bar').classList.add('hidden');
-            document.getElementById('image-preview-thumb').src = '';
+            document.getElementById('image-preview-grid').innerHTML = '';
             document.getElementById('image-file-input').value = '';
         }
 
-        // Clipboard paste support — Ctrl+V image into the textarea area
+        // Clipboard paste support — Ctrl+V pastes image/files from clipboard
         document.addEventListener('paste', (e) => {
             if (!document.getElementById('workspace-input-area').classList.contains('hidden')) {
-                const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
-                if (item) {
+                // If there are files (like screenshots) in the clipboard
+                const items = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file');
+                if (items.length) {
                     e.preventDefault();
-                    handleImageFile(item.getAsFile());
+                    items.forEach(i => handleFile(i.getAsFile()));
                 }
             }
         });
