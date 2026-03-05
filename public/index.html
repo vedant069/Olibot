@@ -288,6 +288,32 @@
             body {
                 overflow: auto !important;
             }
+
+            /* Better touch targets on mobile */
+            #sessions-list>div {
+                min-height: 72px;
+            }
+
+            /* Make empty state more compact on mobile */
+            #empty-state h2 {
+                font-size: 1.125rem;
+            }
+
+            #empty-state .w-20 {
+                width: 3.5rem;
+                height: 3.5rem;
+            }
+
+            /* Full-width main area */
+            #main-area {
+                width: 100%;
+            }
+
+            /* Phones panel responsive */
+            #phones-panel {
+                position: fixed;
+                z-index: 25;
+            }
         }
 
         /* Themed utility classes */
@@ -460,11 +486,11 @@
 
         <!-- Left Pane: Sidebar / Session List -->
         <aside id="sidebar" class="w-80 md:w-96 flex flex-col border-r t-sidebar z-20 shadow-xl shadow-black/20">
-            <div class="p-4 border-b flex justify-between items-center t-header shadow-sm z-10"
+            <div class="p-3 sm:p-4 border-b flex justify-between items-center t-header shadow-sm z-10"
                 style="border-color: inherit;">
-                <h2 class="text-xs uppercase tracking-widest font-bold t-text-muted"
+                <h2 class="text-xs uppercase tracking-widest font-bold t-text-muted shrink-0"
                     style="font-family: Poppins, sans-serif;">Session History</h2>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 sm:gap-2">
                     <button onclick="showWorkspacePanel()" title="Workspace Files"
                         class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] p-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,25 +540,28 @@
             <!-- Default Empty State -->
             <div id="empty-state"
                 class="absolute inset-0 flex flex-col items-center justify-center t-text-secondary z-0 t-main">
-                <div class="w-20 h-20 rounded-full t-card flex items-center justify-center mb-6 shadow-2xl border">
+                <div
+                    class="w-14 h-14 sm:w-20 sm:h-20 rounded-full t-card flex items-center justify-center mb-4 sm:mb-6 shadow-2xl border">
                     <svg class="w-10 h-10 t-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
                         </path>
                     </svg>
                 </div>
-                <h2 class="text-xl font-medium t-text-primary mb-2" style="font-family: Poppins, sans-serif;">No Session
+                <h2 class="text-lg sm:text-xl font-medium t-text-primary mb-2"
+                    style="font-family: Poppins, sans-serif;">No Session
                     Selected</h2>
-                <p class="text-sm t-text-secondary">Select a session from the history or start a new task.</p>
+                <p class="text-xs sm:text-sm t-text-secondary px-4">Select a session from the history or start a new
+                    task.</p>
                 <button onclick="startNewSessionView()"
-                    class="mt-8 px-6 py-2.5 bg-[#3249d7] hover:bg-[#2a3dbf] text-white font-medium rounded-lg shadow-lg shadow-[#3249d7]/30 transition-colors cursor-pointer">
+                    class="mt-6 sm:mt-8 px-6 py-2.5 bg-[#3249d7] hover:bg-[#2a3dbf] text-white font-medium rounded-lg shadow-lg shadow-[#3249d7]/30 transition-colors cursor-pointer">
                     Start New Task
                 </button>
             </div>
 
             <!-- Phone Management Panel (sibling to empty-state, inside main) -->
             <div id="phones-panel" class="absolute inset-0 z-20 t-main overflow-y-auto hidden">
-                <div class="max-w-2xl mx-auto px-4 py-8">
+                <div class="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-xl font-bold t-text-primary" style="font-family: Poppins, sans-serif;">📱
                             Authorized Numbers</h2>
@@ -547,12 +576,12 @@
                     <!-- Add Phone Form -->
                     <div class="t-card rounded-xl p-4 border mb-6" style="border-color: rgba(50,73,215,0.2);">
                         <p class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3">Add Number</p>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <input id="new-phone-number" type="text" placeholder="e.g. 919970870091"
                                 class="t-input border rounded-lg px-3 py-2 text-sm flex-1 outline-none focus:ring-1 focus:ring-[#3249d7]"
                                 style="border-color: rgba(50,73,215,0.2);">
                             <input id="new-phone-label" type="text" placeholder="Label (e.g. Dev 1)"
-                                class="t-input border rounded-lg px-3 py-2 text-sm w-32 outline-none focus:ring-1 focus:ring-[#3249d7]"
+                                class="t-input border rounded-lg px-3 py-2 text-sm sm:w-32 outline-none focus:ring-1 focus:ring-[#3249d7]"
                                 style="border-color: rgba(50,73,215,0.2);">
                             <button onclick="addPhone()"
                                 class="px-4 py-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap">Add
@@ -600,17 +629,18 @@
                         class="relative rounded-xl shadow-2xl t-card pointer-events-auto border focus-within:border-[#3249d7]/50 focus-within:ring-2 focus-within:ring-[#3249d7]/20 transition-all">
                         <!-- Workspace Files Explorer Panel -->
                         <div id="workspace-panel"
-                            class="hidden flex-1 overflow-y-auto w-full max-h-screen bg-[#f8f9fa] dark:bg-gray-900 absolute inset-0 z-30 flex flex-col pt-16 md:pt-0">
+                            class="hidden flex-1 overflow-y-auto w-full max-h-screen bg-[#f8f9fa] dark:bg-gray-900 fixed md:absolute inset-0 z-30 flex flex-col pt-0">
                             <div
-                                class="sticky top-0 z-10 px-6 md:px-10 py-5 bg-white/95 dark:bg-[#1a1c23]/95 backdrop-blur-sm border-b shadow-sm t-border t-card flex justify-between items-center">
+                                class="sticky top-0 z-10 px-3 sm:px-6 md:px-10 py-3 sm:py-5 bg-white/95 dark:bg-[#1a1c23]/95 backdrop-blur-sm border-b shadow-sm t-border t-card flex justify-between items-center">
                                 <div>
-                                    <h2 class="text-xl md:text-2xl font-bold t-text-primary mb-1 tracking-tight"
+                                    <h2 class="text-lg sm:text-xl md:text-2xl font-bold t-text-primary mb-1 tracking-tight"
                                         style="font-family: Inter, Poppins, sans-serif;">
                                         Workspace Files
                                     </h2>
-                                    <p class="text-xs md:text-sm t-text-muted font-medium flex items-center gap-1.5">
+                                    <p
+                                        class="text-[10px] sm:text-xs md:text-sm t-text-muted font-medium flex items-center gap-1.5">
                                         <span id="current-dir-path"
-                                            class="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">/home/ubuntu</span>
+                                            class="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300 truncate max-w-[200px] sm:max-w-none">/home/ubuntu</span>
                                     </p>
                                 </div>
                                 <button onclick="hideWorkspacePanel()" title="Close Browser"
@@ -622,14 +652,15 @@
                                 </button>
                             </div>
                             <!-- Content / Files Grid -->
-                            <div class="p-6 md:p-10 max-w-5xl w-full mx-auto">
-                                <div id="files-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="p-3 sm:p-6 md:p-10 max-w-5xl w-full mx-auto">
+                                <div id="files-list"
+                                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                                     <!-- populated via JS -->
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Header -->file input -->
+                        <!-- Hidden file input -->
                         <input id="image-file-input" type="file" accept="*" multiple class="hidden"
                             onchange="[...this.files].forEach(f => handleFile(f)); this.value=''">
                         <textarea id="chat-textarea" rows="1" placeholder="Type a message… or paste/drop an image"
@@ -820,12 +851,12 @@
 
             const content = document.getElementById('workspace-content');
             content.innerHTML = `
-                <div class="max-w-3xl mx-auto py-12 md:py-24 text-center px-4 animate-[fadeIn_0.5s_ease-out]">
-                    <div class="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center mb-8 border shadow-2xl" style="background: rgba(50,73,215,0.1); border-color: rgba(50,73,215,0.2); box-shadow: 0 25px 50px rgba(50,73,215,0.1); color: #3249d7;">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <div class="max-w-3xl mx-auto py-8 sm:py-12 md:py-24 text-center px-4 animate-[fadeIn_0.5s_ease-out]">
+                    <div class="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl mx-auto flex items-center justify-center mb-6 sm:mb-8 border shadow-2xl" style="background: rgba(50,73,215,0.1); border-color: rgba(50,73,215,0.2); box-shadow: 0 25px 50px rgba(50,73,215,0.1); color: #3249d7;">
+                        <svg class="w-7 h-7 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <h2 class="text-3xl font-bold t-text-primary mb-4 tracking-tight" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
-                    <p class="t-text-secondary text-lg max-w-xl mx-auto leading-relaxed">Describe your feature or bug fix. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
+                    <h2 class="text-xl sm:text-3xl font-bold t-text-primary mb-3 sm:mb-4 tracking-tight" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
+                    <p class="t-text-secondary text-sm sm:text-lg max-w-xl mx-auto leading-relaxed">Describe your feature or bug fix. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
                 </div>
             `;
 
@@ -906,11 +937,19 @@
         }
 
         let lastMessageCount = 0;
+        let lastMessageLength = 0;
+
         function renderMessages(messages) {
             const content = document.getElementById('workspace-content');
 
-            if (messages.length === lastMessageCount && content.querySelector('.max-w-4xl')) return;
+            const currentLastLen = messages.length > 0 ? messages[messages.length - 1].content.length : 0;
+
+            if (messages.length === lastMessageCount && currentLastLen === lastMessageLength && content.querySelector('.max-w-4xl')) {
+                return;
+            }
+
             lastMessageCount = messages.length;
+            lastMessageLength = currentLastLen;
 
             if (messages.length === 0) {
                 content.innerHTML = `
@@ -1267,8 +1306,8 @@
 
                     const icon = f.isDirectory ? '📁' : '📄';
                     const downloadBtn = !f.isDirectory ? `
-                        <a href="/api/workspace/download?path=${encodeURIComponent(f.path)}" target="_blank" download class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-[#3249d7] text-white opacity-0 group-hover:opacity-100 transition shadow-lg cursor-pointer flex items-center gap-1.5 text-xs font-semibold z-10">
-                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download
+                        <a href="/api/workspace/download?path=${encodeURIComponent(f.path)}" target="_blank" download class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-[#3249d7] text-white opacity-100 md:opacity-0 group-hover:opacity-100 transition shadow-lg cursor-pointer flex items-center gap-1.5 text-xs font-semibold z-10">
+                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> <span class="hidden sm:inline">Download</span>
                         </a>
                     ` : '';
 
@@ -1320,7 +1359,7 @@
                 list.innerHTML = '';
                 phones.forEach(p => {
                     const row = document.createElement('div');
-                    row.className = 't-card border rounded-xl px-4 py-3 flex items-center justify-between gap-3';
+                    row.className = 't-card border rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
                     row.style.borderColor = 'rgba(50,73,215,0.15)';
                     row.innerHTML = `
                         <div class="flex-1 min-w-0">
