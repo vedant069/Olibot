@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp AI Engineer — Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #3249d7, #6c63ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 26px;
+            box-shadow: 0 8px 24px rgba(50, 73, 215, 0.4);
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            margin-bottom: 36px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        input:focus {
+            border-color: rgba(50, 73, 215, 0.8);
+            box-shadow: 0 0 0 3px rgba(50, 73, 215, 0.15);
+        }
+
+        input[type="number"] {
+            letter-spacing: 8px;
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #3249d7, #5a6cf0);
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            border-radius: 10px;
+            padding: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(50, 73, 215, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(50, 73, 215, 0.5);
+        }
+
+        button:active {
+            transform: none;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .back-btn {
+            background: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            box-shadow: none;
+            margin-top: 10px;
+            padding: 8px;
+            font-weight: 500;
+        }
+
+        .back-btn:hover {
+            color: #fff;
+            transform: none;
+            box-shadow: none;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .error {
+            color: #ff7b7b;
+            background: rgba(255, 100, 100, 0.1);
+            border: 1px solid rgba(255, 100, 100, 0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+        }
+
+        .success {
+            color: #7bffb8;
+            background: rgba(100, 255, 160, 0.1);
+            border: 1px solid rgba(100, 255, 160, 0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+        }
+
+        .otp-hint {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            margin-top: -10px;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="logo">🤖</div>
+        <h1>WhatsApp AI Engineer</h1>
+        <p class="subtitle">Sign in to your workspace</p>
+
+        <div id="error-msg" class="error"></div>
+        <div id="success-msg" class="success"></div>
+
+        <!-- Step 1: Email entry -->
+        <div id="step-email">
+            <label for="email-input">Email address</label>
+            <input id="email-input" type="email" placeholder="you@company.com" autocomplete="email" />
+            <button id="send-otp-btn" onclick="sendOtp()">Continue with Email →</button>
+        </div>
+
+        <!-- Step 2: OTP entry -->
+        <div id="step-otp" style="display:none">
+            <p class="otp-hint" id="otp-hint">We sent a 6-digit code to your inbox.</p>
+            <label for="otp-input">Verification code</label>
+            <input id="otp-input" type="number" placeholder="000000" maxlength="6" autocomplete="one-time-code"
+                onkeydown="if(event.key==='Enter') verifyOtp()" />
+            <button id="verify-otp-btn" onclick="verifyOtp()">Verify & Sign In</button>
+            <button class="back-btn" onclick="backToEmail()">← Change email</button>
+        </div>
+    </div>
+
+    <script>
+        let currentEmail = '';
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('success-msg').style.display = 'none';
+        }
+        function showSuccess(msg) {
+            const el = document.getElementById('success-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('error-msg').style.display = 'none';
+        }
+        function clearMessages() {
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('success-msg').style.display = 'none';
+        }
+
+        async function sendOtp() {
+            const email = document.getElementById('email-input').value.trim();
+            if (!email || !email.includes('@')) return showError('Please enter a valid email address.');
+
+            clearMessages();
+            const btn = document.getElementById('send-otp-btn');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                const res = await fetch('/api/auth/email/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    showError(data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Continue with Email →';
+                    return;
+                }
+                currentEmail = email;
+                document.getElementById('otp-hint').textContent = `We sent a 6-digit code to ${email}`;
+                document.getElementById('step-email').style.display = 'none';
+                document.getElementById('step-otp').style.display = 'block';
+                showSuccess('Code sent! Check your inbox.');
+                setTimeout(() => document.getElementById('otp-input').focus(), 100);
+            } catch (e) {
+                showError('Network error. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Continue with Email →';
+            }
+        }
+
+        function backToEmail() {
+            clearMessages();
+            document.getElementById('step-otp').style.display = 'none';
+            document.getElementById('step-email').style.display = 'block';
+            document.getElementById('send-otp-btn').disabled = false;
+            document.getElementById('send-otp-btn').textContent = 'Continue with Email →';
+        }
+
+        async function verifyOtp() {
+            const otp = document.getElementById('otp-input').value.trim();
+            if (!otp || otp.length < 6) return showError('Please enter the 6-digit code.');
+
+            clearMessages();
+            const btn = document.getElementById('verify-otp-btn');
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const res = await fetch('/api/auth/email/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail, otp }),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (data.error) {
+                    showError(data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Verify & Sign In';
+                    return;
+                }
+                showSuccess('Logged in! Redirecting...');
+                setTimeout(() => window.location.href = '/', 800);
+            } catch (e) {
+                showError('Network error. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Verify & Sign In';
+            }
+        }
+
+        // Auto-focus on load
+        document.getElementById('email-input').focus();
+    </script>
+</body>
+
+</html>

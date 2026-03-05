@@ -10,18 +10,14 @@ const config = {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
     GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-3-flash-preview',
 
-    // Allowed phone numbers (with country code, no +)
-    // Vedant: 919970870091, Kushal (Manager): 917304556268
-    ALLOWED_PHONES: (process.env.ALLOWED_PHONES || '919970870091,917304556268').split(',').filter(Boolean),
+    // Allowed phone numbers (admin seed — also manageable via dashboard)
+    ALLOWED_PHONES: (process.env.ALLOWED_PHONES || '').split(',').filter(Boolean),
 
-    // Allowed WhatsApp group JIDs (format: 120363xxxxxxx@g.us)
-    // Members of these groups can trigger the bot via @mention.
-    // If empty, responds to @mentions in ANY group.
-    ALLOWED_GROUPS: (process.env.ALLOWED_GROUPS || '120363423167249442@g.us').split(',').filter(Boolean),
+    // Allowed WhatsApp group JIDs
+    ALLOWED_GROUPS: (process.env.ALLOWED_GROUPS || '').split(',').filter(Boolean),
 
-    // Names people might use when @mentioning the bot in a group.
-    // Add new aliases as team members save the contact under different names.
-    BOT_ALIASES: (process.env.BOT_ALIASES || 'Koach,PLBot,8999489048,918999489048,Oliii').split(',').filter(Boolean),
+    // Bot aliases for group @mentions
+    BOT_ALIASES: (process.env.BOT_ALIASES || 'Koach,PLBot').split(',').filter(Boolean),
 
     // Session defaults
     DEFAULT_WORKING_DIR: process.env.DEFAULT_WORKING_DIR || '/home/ubuntu',
@@ -36,6 +32,15 @@ const config = {
     AUTH_DIR: process.env.AUTH_DIR || './auth_info',
     DB_PATH: process.env.DB_PATH || './sessions.db',
     LOG_DIR: process.env.LOG_DIR || './logs',
+
+    // ── Auth (JWT + Email/Nodemailer) ─────────────────────────
+    JWT_SECRET: process.env.JWT_SECRET || 'change-me-in-production-please',
+
+    SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+    SMTP_PORT: parseInt(process.env.SMTP_PORT || '587'),
+    SMTP_SECURE: process.env.SMTP_SECURE === 'true', // true for port 465
+    SMTP_USER: process.env.SMTP_USER || '',
+    SMTP_PASS: process.env.SMTP_PASS || '',
 };
 
 export default config;

@@ -475,8 +475,62 @@
                 class="t-input border rounded-md text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 focus:ring-1 focus:ring-[#3249d7] outline-none max-w-[120px] md:max-w-none cursor-pointer">
                 <!-- Dynamically populated from /api/phones -->
             </select>
+            <!-- User Info + Logout (shown when logged in) -->
+            <div id="user-info" class="hidden items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-[#3249d7] flex items-center justify-center text-white text-xs font-bold cursor-pointer shrink-0"
+                    id="user-avatar" title="Logged in">?</div>
+                <button onclick="logout()"
+                    class="text-xs t-text-muted hover:text-red-400 transition-colors cursor-pointer font-medium"
+                    title="Sign out">Sign out</button>
+            </div>
         </div>
     </header>
+
+    <!-- Share Session Modal -->
+    <div id="share-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeShareModal()"></div>
+        <div class="relative t-card border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+            style="border-color:rgba(50,73,215,0.25);">
+            <h3 class="text-base font-bold t-text-primary mb-1">Share Session</h3>
+            <p class="text-xs t-text-muted mb-4" id="share-session-label">Session: —</p>
+            <!-- Tabs -->
+            <div class="flex border-b mb-4" style="border-color:rgba(50,73,215,0.15);">
+                <button class="share-tab px-3 py-2 text-xs font-semibold t-text-primary border-b-2 border-[#3249d7]"
+                    onclick="showShareTab('grant')" id="tab-grant">Grant Access</button>
+                <button class="share-tab px-3 py-2 text-xs font-semibold t-text-muted border-b-2 border-transparent"
+                    onclick="showShareTab('claim')" id="tab-claim">Claim with OTP</button>
+            </div>
+            <!-- Grant tab -->
+            <div id="share-tab-grant">
+                <p class="text-xs t-text-muted mb-3">Enter user ID or email to grant access directly (admin only):</p>
+                <input id="grant-user-id" type="text" placeholder="User ID"
+                    class="t-input border rounded-lg px-3 py-2 text-sm w-full mb-3 outline-none focus:ring-1 focus:ring-[#3249d7]"
+                    style="border-color:rgba(50,73,215,0.2);">
+                <button onclick="grantAccessById()"
+                    class="w-full px-4 py-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer">Grant
+                    Access</button>
+                <hr class="my-4" style="border-color:rgba(50,73,215,0.1);">
+                <p class="text-xs t-text-muted mb-2">Or request access via WhatsApp OTP (owner will receive a WhatsApp
+                    message):</p>
+                <button onclick="requestAccessViaWA()"
+                    class="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer">Request
+                    via WhatsApp →</button>
+            </div>
+            <!-- Claim OTP tab -->
+            <div id="share-tab-claim" class="hidden">
+                <p class="text-xs t-text-muted mb-3">Enter the OTP the session owner shared with you:</p>
+                <input id="claim-otp" type="number" placeholder="6-digit OTP"
+                    class="t-input border rounded-lg px-3 py-2 text-sm w-full mb-3 outline-none focus:ring-1 focus:ring-[#3249d7] font-mono tracking-widest text-center"
+                    style="border-color:rgba(50,73,215,0.2);">
+                <button onclick="claimWithOtp()"
+                    class="w-full px-4 py-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer">Verify
+                    OTP & Get Access</button>
+            </div>
+            <div id="share-modal-msg" class="mt-3 text-xs font-medium text-center hidden"></div>
+            <button onclick="closeShareModal()"
+                class="absolute top-4 right-4 t-text-muted hover:text-red-400 cursor-pointer text-lg leading-none">✕</button>
+        </div>
+    </div>
 
     <!-- App Body (Two Columns) -->
     <div class="flex-1 flex overflow-hidden relative">
@@ -1208,6 +1262,7 @@
         document.head.appendChild(animStyle);
 
         // Core Init
+        checkAuth();
         fetchPhones().then(() => {
             fetchStats();
             fetchSessions(1);
@@ -1416,12 +1471,114 @@
             if (!confirm(`Remove ${phone} from the authorized list?`)) return;
             try {
                 await fetch(`/api/phones/${phone}`, { method: 'DELETE' });
-                fetchPhones();
             } catch (e) {
                 alert('Network error: ' + e.message);
             }
         }
+
+        // ── Auth ──────────────────────────────────────────────
+        let currentUser = null;
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/me', { credentials: 'include' });
+                if (res.ok) {
+                    currentUser = await res.json();
+                    const info = document.getElementById('user-info');
+                    info.classList.remove('hidden');
+                    info.classList.add('flex');
+                    const initials = (currentUser.displayName || currentUser.email || '?')[0].toUpperCase();
+                    document.getElementById('user-avatar').textContent = initials;
+                    document.getElementById('user-avatar').title = currentUser.email || currentUser.displayName;
+                }
+            } catch (_) { /* not logged in — that's fine */ }
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            window.location.href = '/login.html';
+        }
+
+        // ── Share Session Modal ───────────────────────────────
+        let shareSessionId = null;
+
+        function openShareModal(sessionId) {
+            shareSessionId = sessionId;
+            document.getElementById('share-session-label').textContent = 'Session: ' + sessionId;
+            document.getElementById('share-modal').classList.remove('hidden');
+            document.getElementById('share-modal-msg').classList.add('hidden');
+            document.getElementById('grant-user-id').value = '';
+            document.getElementById('claim-otp').value = '';
+            showShareTab('grant');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+            shareSessionId = null;
+        }
+
+        function showShareTab(tab) {
+            ['grant', 'claim'].forEach(t => {
+                document.getElementById('share-tab-' + t).classList.toggle('hidden', t !== tab);
+                const btn = document.getElementById('tab-' + t);
+                btn.classList.toggle('t-text-primary', t === tab);
+                btn.classList.toggle('border-[#3249d7]', t === tab);
+                btn.classList.toggle('t-text-muted', t !== tab);
+                btn.classList.toggle('border-transparent', t !== tab);
+            });
+        }
+
+        function showShareMsg(msg, isError = false) {
+            const el = document.getElementById('share-modal-msg');
+            el.textContent = msg;
+            el.className = `mt-3 text-xs font-medium text-center ${isError ? 'text-red-400' : 'text-emerald-400'}`;
+            el.classList.remove('hidden');
+        }
+
+        async function grantAccessById() {
+            const userId = document.getElementById('grant-user-id').value.trim();
+            if (!userId) return showShareMsg('Please enter a User ID.', true);
+            try {
+                const res = await fetch(`/api/sessions/${shareSessionId}/grant-access`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                const d = await res.json();
+                if (d.error) return showShareMsg(d.error, true);
+                showShareMsg('✅ Access granted!');
+            } catch (e) { showShareMsg('Network error', true); }
+        }
+
+        async function requestAccessViaWA() {
+            try {
+                const res = await fetch(`/api/sessions/${shareSessionId}/request-access`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const d = await res.json();
+                if (d.error) return showShareMsg(d.error, true);
+                showShareMsg('📩 Request sent! The owner will receive a WhatsApp OTP message.');
+            } catch (e) { showShareMsg('Network error', true); }
+        }
+
+        async function claimWithOtp() {
+            const otp = document.getElementById('claim-otp').value.trim();
+            if (!otp) return showShareMsg('Enter the 6-digit OTP.', true);
+            try {
+                const res = await fetch(`/api/sessions/${shareSessionId}/claim-access`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ otp })
+                });
+                const d = await res.json();
+                if (d.error) return showShareMsg(d.error, true);
+                showShareMsg('✅ Access granted! Reload to see the session.');
+            } catch (e) { showShareMsg('Network error', true); }
+        }
+
     </script>
+
 </body>
 
 </html>
