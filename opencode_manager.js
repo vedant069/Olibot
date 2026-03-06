@@ -20,6 +20,7 @@ export default class OpenCodeManager extends EventEmitter {
 
             const args = [
                 'run',
+                '--print-logs',
                 task
             ];
 
@@ -50,10 +51,19 @@ export default class OpenCodeManager extends EventEmitter {
                 this.sessions.delete(sessionId);
                 const status = exitCode === 0 ? 'completed' : 'failed';
                 this.store.updateSession(sessionId, { status, thread_open: exitCode === 0 ? 1 : 0 });
-                // Strip ANSI codes from raw terminal output for the final result
-                const cleanBuffer = resultBuffer.replace(/\x1B\[\d+;?\d*m/g, '').trim() || 'Task completed by OpenCode.';
+                // Strip ANSI codes and filter out internal OpenCode/bun INFO/DEBUG log lines
+                const lines = resultBuffer.split('\n');
+                let cleanText = '';
+                for (const line of lines) {
+                    const cleanLine = line.replace(/\x1B\[\d+;?\d*m/g, '').trim();
+                    if (cleanLine && !cleanLine.match(/^(INFO|DEBUG|WARN)\s+\d{4}-\d{2}-\d{2}T/)) {
+                        cleanText += cleanLine + '\n';
+                    }
+                }
+                const finalStr = cleanText.trim() || 'Task completed by OpenCode.';
+
                 this.emit('session_end', { sessionId, exitCode, status, costUsd: 0 });
-                this.emit('result', { sessionId, content: cleanBuffer.substring(Math.max(0, cleanBuffer.length - 1500)), costUsd: 0 });
+                this.emit('result', { sessionId, content: finalStr.substring(Math.max(0, finalStr.length - 1500)), costUsd: 0 });
             });
 
             resolve({ sessionId, ptyProcess });
@@ -69,6 +79,7 @@ export default class OpenCodeManager extends EventEmitter {
 
         const args = [
             'run',
+            '--print-logs',
             '-c', '-s', sessionId,
             followUp
         ];
@@ -91,9 +102,19 @@ export default class OpenCodeManager extends EventEmitter {
             this.sessions.delete(sessionId);
             const status = exitCode === 0 ? 'completed' : 'failed';
             this.store.updateSession(sessionId, { status, thread_open: exitCode === 0 ? 1 : 0 });
-            const cleanBuffer = resultBuffer.replace(/\x1B\[\d+;?\d*m/g, '').trim() || 'Task continued by OpenCode.';
+
+            const lines = resultBuffer.split('\n');
+            let cleanText = '';
+            for (const line of lines) {
+                const cleanLine = line.replace(/\x1B\[\d+;?\d*m/g, '').trim();
+                if (cleanLine && !cleanLine.match(/^(INFO|DEBUG|WARN)\s+\d{4}-\d{2}-\d{2}T/)) {
+                    cleanText += cleanLine + '\n';
+                }
+            }
+            const finalStr = cleanText.trim() || 'Task continued by OpenCode.';
+
             this.emit('session_end', { sessionId, exitCode, status, costUsd: 0 });
-            this.emit('result', { sessionId, content: cleanBuffer.substring(Math.max(0, cleanBuffer.length - 1500)), costUsd: 0 });
+            this.emit('result', { sessionId, content: finalStr.substring(Math.max(0, finalStr.length - 1500)), costUsd: 0 });
         });
 
         return { sessionId, ptyProcess };
