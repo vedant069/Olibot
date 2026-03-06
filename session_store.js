@@ -107,6 +107,25 @@ class SessionStore {
         return this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
     }
 
+    getActiveSessions(userPhone) {
+        return this.db.prepare(
+            `SELECT * FROM sessions
+             WHERE user_phone = ?
+             AND (status = 'running' OR (status = 'stopped' AND updated_at >= datetime('now', '-1 day')))
+             ORDER BY updated_at DESC`
+        ).all(String(userPhone));
+    }
+
+    getCurrentThread(userPhone) {
+        // Find the most recently active open thread owned by this phone
+        const phoneParam = String(userPhone);
+        return this.db.prepare(
+            `SELECT * FROM sessions
+             WHERE user_phone = ? AND thread_open = 1 AND claude_session_id IS NOT NULL
+             ORDER BY updated_at DESC LIMIT 1`
+        ).get(phoneParam);
+    }
+
     updateSession(id, fields) {
         const sets = Object.keys(fields).map(k => `${k} = ?`).join(', ');
         const vals = [...Object.values(fields), id];
