@@ -70,7 +70,13 @@ check_claude() {
     if "$CLAUDE_BIN" --version &>/dev/null; then
         ok "Claude Code is authenticated"
     else
-        warn "Claude may not be authenticated. Run: claude auth login"
+        warn "Claude is not authenticated. Starting login process..."
+        "$CLAUDE_BIN" login
+        if "$CLAUDE_BIN" --version &>/dev/null; then
+            ok "Claude Code is now authenticated"
+        else
+            fail "Failed to authenticate Claude Code. Please run 'claude login' manually."
+        fi
     fi
 }
 
