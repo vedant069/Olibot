@@ -559,6 +559,18 @@
                                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </button>
+                    <!-- Admin Panel button (shown only to admins) -->
+                    <button id="admin-panel-btn" onclick="showAdminPanel()" title="Admin Panel"
+                        class="hidden relative text-amber-400 hover:text-white bg-amber-400/10 hover:bg-amber-500 p-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-amber-400/20 hover:border-amber-500 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span id="notif-badge"
+                            class="hidden absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+                    </button>
                     <button onclick="startNewSessionView()"
                         class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] px-3 py-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
                         <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,7 +662,62 @@
                 </div>
             </div>
 
-            <!-- Workspace Top Bar -->
+            <!-- Admin Users Panel -->
+            <div id="admin-panel" class="absolute inset-0 z-20 t-main overflow-y-auto hidden">
+                <div class="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold t-text-primary" style="font-family:Poppins,sans-serif;">⚙️ Admin
+                            Panel</h2>
+                        <button onclick="hideAdminPanel()"
+                            class="t-text-muted hover:text-red-400 transition-colors cursor-pointer"><svg
+                                class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg></button>
+                    </div>
+
+                    <!-- Access Requests section -->
+                    <div id="access-requests-section" class="mb-6">
+                        <p class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3">🔔 Pending Access
+                            Requests</p>
+                        <div id="access-requests-list" class="space-y-2">
+                            <div class="text-center t-text-muted text-sm py-4">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Add User Form -->
+                    <div class="t-card rounded-xl p-4 border mb-6" style="border-color:rgba(50,73,215,0.2);">
+                        <p class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3">➕ Add User</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                            <input id="new-user-name" type="text" placeholder="Display Name"
+                                class="t-input border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#3249d7]"
+                                style="border-color:rgba(50,73,215,0.2);">
+                            <input id="new-user-email" type="email" placeholder="Email address"
+                                class="t-input border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#3249d7]"
+                                style="border-color:rgba(50,73,215,0.2);">
+                            <select id="new-user-role"
+                                class="t-input border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#3249d7]"
+                                style="border-color:rgba(50,73,215,0.2);">
+                                <option value="developer">Developer</option>
+                                <option value="admin">Admin</option>
+                                <option value="viewer">Viewer</option>
+                            </select>
+                            <button onclick="addUser()"
+                                class="px-4 py-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer">Create
+                                &amp; Email Password</button>
+                        </div>
+                        <p class="text-[10px] t-text-muted">An email will be sent to the user with their auto-generated
+                            password.</p>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div id="users-list" class="space-y-2">
+                        <div class="text-center t-text-muted text-sm py-8">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+
             <div id="workspace-header"
                 class="absolute top-0 left-0 right-0 h-12 md:h-14 px-3 md:px-6 border-b flex items-center justify-between t-header backdrop-blur-md z-20 hidden shadow-sm">
                 <div class="flex items-center space-x-2 md:space-x-4 w-full min-w-0">
@@ -1476,28 +1543,6 @@
             }
         }
 
-        // ── Auth ──────────────────────────────────────────────
-        let currentUser = null;
-
-        async function checkAuth() {
-            try {
-                const res = await fetch('/api/me', { credentials: 'include' });
-                if (res.ok) {
-                    currentUser = await res.json();
-                    const info = document.getElementById('user-info');
-                    info.classList.remove('hidden');
-                    info.classList.add('flex');
-                    const initials = (currentUser.displayName || currentUser.email || '?')[0].toUpperCase();
-                    document.getElementById('user-avatar').textContent = initials;
-                    document.getElementById('user-avatar').title = currentUser.email || currentUser.displayName;
-                }
-            } catch (_) { /* not logged in — that's fine */ }
-        }
-
-        async function logout() {
-            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-            window.location.href = '/login.html';
-        }
 
         // ── Share Session Modal ───────────────────────────────
         let shareSessionId = null;
@@ -1575,6 +1620,170 @@
                 if (d.error) return showShareMsg(d.error, true);
                 showShareMsg('✅ Access granted! Reload to see the session.');
             } catch (e) { showShareMsg('Network error', true); }
+        }
+
+        // ── Auth ──────────────────────────────────────────────
+        let currentUser = null;
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/me', { credentials: 'include' });
+                if (res.ok) {
+                    currentUser = await res.json();
+                    const info = document.getElementById('user-info');
+                    info.classList.remove('hidden');
+                    info.classList.add('flex');
+                    const initials = (currentUser.displayName || currentUser.email || '?')[0].toUpperCase();
+                    document.getElementById('user-avatar').textContent = initials;
+                    document.getElementById('user-avatar').title = `${currentUser.displayName || ''} (${currentUser.role || ''})`;
+                    // Show admin button
+                    if (currentUser.isAdmin) {
+                        document.getElementById('admin-panel-btn').classList.remove('hidden');
+                        fetchNotifCount();
+                    }
+                }
+            } catch (_) { }
+        }
+
+        async function fetchNotifCount() {
+            try {
+                const r = await fetch('/api/stats', { credentials: 'include' });
+                const d = await r.json();
+                const badge = document.getElementById('notif-badge');
+                if (d.pendingRequests > 0) {
+                    badge.textContent = d.pendingRequests;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            } catch (_) { }
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            window.location.href = window.location.pathname.replace(/\/[^/]*$/, '/') + 'login.html';
+        }
+
+        // ── Admin Panel ───────────────────────────────────────
+        function showAdminPanel() {
+            closeSidebar();
+            ['empty-state', 'workspace-header', 'workspace-content', 'workspace-input-area', 'phones-panel'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+            document.getElementById('admin-panel').classList.remove('hidden');
+            fetchUsers();
+            fetchPendingRequests();
+            fetchNotifCount();
+        }
+
+        function hideAdminPanel() {
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+        }
+
+        async function fetchUsers() {
+            try {
+                const res = await fetch('/api/admin/users', { credentials: 'include' });
+                const users = await res.json();
+                const el = document.getElementById('users-list');
+                if (!Array.isArray(users) || users.length === 0) { el.innerHTML = '<div class="text-center t-text-muted text-sm py-4">No users yet.</div>'; return; }
+                el.innerHTML = '<p class="text-xs t-text-muted uppercase tracking-wider font-bold mb-2">👥 Team Members</p>' + users.map(u => `
+                    <div class="t-card border rounded-xl px-4 py-3 flex items-center justify-between gap-3" style="border-color:rgba(50,73,215,0.15);">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-8 h-8 rounded-full bg-[#3249d7] flex items-center justify-center text-white text-xs font-bold shrink-0">${(u.display_name || u.email || '?')[0].toUpperCase()}</div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold t-text-primary truncate">${escapeHtml(u.display_name || '')}</p>
+                                <p class="text-xs t-text-muted truncate">${escapeHtml(u.email || '')} · <span class="capitalize">${u.role || 'developer'}</span>${u.is_admin ? ' · <span class="text-amber-400 font-semibold">Admin</span>' : ''}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button onclick="resetPassword('${u.id}')" class="px-2 py-1 text-xs t-text-muted hover:text-[#3249d7] border border-current/20 rounded-md transition-colors cursor-pointer" title="Reset Password">Reset Pwd</button>
+                            ${currentUser?.id !== u.id ? `<button onclick="deleteUser('${u.id}')" class="px-2 py-1 text-xs t-text-muted hover:text-red-400 border border-current/20 rounded-md transition-colors cursor-pointer" title="Remove User">Remove</button>` : ''}
+                        </div>
+                    </div>`).join('');
+            } catch (e) { document.getElementById('users-list').innerHTML = '<div class="text-red-400 text-sm py-2">Error loading users.</div>'; }
+        }
+
+        async function addUser() {
+            const name = document.getElementById('new-user-name').value.trim();
+            const email = document.getElementById('new-user-email').value.trim();
+            const role = document.getElementById('new-user-role').value;
+            if (!email) return alert('Email is required.');
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, displayName: name || email.split('@')[0], role, isAdmin: role === 'admin' })
+                });
+                const d = await res.json();
+                if (d.error) return alert('Error: ' + d.error);
+                document.getElementById('new-user-name').value = '';
+                document.getElementById('new-user-email').value = '';
+                alert(`✅ User created! A password has been emailed to ${email}.`);
+                fetchUsers();
+            } catch (e) { alert('Network error'); }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Remove this user? They will no longer be able to log in.')) return;
+            try {
+                await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', credentials: 'include' });
+                fetchUsers();
+            } catch (e) { alert('Error'); }
+        }
+
+        async function resetPassword(userId) {
+            if (!confirm("Reset this user's password? A new password will be emailed to them.")) return;
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/reset-password`, { method: 'POST', credentials: 'include' });
+                const d = await res.json();
+                if (d.error) return alert('Error: ' + d.error);
+                alert('✅ Password reset and emailed to the user.');
+            } catch (e) { alert('Error'); }
+        }
+
+        async function fetchPendingRequests() {
+            try {
+                const res = await fetch('/api/admin/access-requests', { credentials: 'include' });
+                const requests = await res.json();
+                const el = document.getElementById('access-requests-list');
+                if (!Array.isArray(requests) || requests.length === 0) { el.innerHTML = '<div class="text-center t-text-muted text-sm py-2">No pending requests. 🎉</div>'; return; }
+                el.innerHTML = requests.map(r => `
+                    <div class="t-card border rounded-xl px-4 py-3 flex items-center justify-between gap-3" style="border-color:rgba(255,180,0,0.2);">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold t-text-primary">${escapeHtml(r.requester_name || '')} <span class="text-xs t-text-muted font-normal">${escapeHtml(r.requester_email || '')}</span></p>
+                            <p class="text-xs t-text-muted">Requesting access to: <span class="font-mono">${r.session_id.substring(0, 12)}…</span></p>
+                            <p class="text-xs t-text-muted italic">${escapeHtml(r.session_task || '')}</p>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button onclick="resolveRequest('${r.id}', true)" class="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-semibold transition-colors cursor-pointer">Approve</button>
+                            <button onclick="resolveRequest('${r.id}', false)" class="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold transition-colors cursor-pointer">Reject</button>
+                        </div>
+                    </div>`).join('');
+            } catch (e) { }
+        }
+
+        async function resolveRequest(requestId, approve) {
+            try {
+                await fetch(`/api/admin/access-requests/${requestId}/resolve`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approve })
+                });
+                fetchPendingRequests();
+                fetchNotifCount();
+            } catch (e) { alert('Error'); }
+        }
+
+        // ── Request Access (non-owner sessions) ───────────────
+        async function requestSessionAccess(sessionId) {
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/request-access`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const d = await res.json();
+                if (d.error) return alert('Error: ' + d.error);
+                alert('✅ Request sent! The admin will be notified and will review your request.');
+            } catch (e) { alert('Network error'); }
         }
 
     </script>

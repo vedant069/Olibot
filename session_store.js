@@ -1,5 +1,5 @@
 // ============================================================
-// session_store.js — SQLite-backed session persistence
+// session_store.js — SQLite-backed session & user persistence
 // ============================================================
 
 import Database from 'better-sqlite3';
@@ -46,15 +46,10 @@ class SessionStore {
                 email TEXT UNIQUE,
                 phone TEXT UNIQUE,
                 display_name TEXT,
+                role TEXT DEFAULT 'developer',
                 is_admin INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS auth_otps (
-                id TEXT PRIMARY KEY,
-                email TEXT NOT NULL,
-                otp TEXT NOT NULL,
-                expires_at DATETIME NOT NULL,
-                used INTEGER DEFAULT 0,
+                password_hash TEXT,
+                created_by TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS session_collaborators (
@@ -66,19 +61,21 @@ class SessionStore {
             CREATE TABLE IF NOT EXISTS access_requests (
                 id TEXT PRIMARY KEY,
                 session_id TEXT NOT NULL,
-                requester_phone TEXT,
+                requester_id TEXT NOT NULL,
+                requester_name TEXT,
                 requester_email TEXT,
-                otp TEXT,
                 status TEXT DEFAULT 'pending',
+                note TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME NOT NULL
+                resolved_at DATETIME,
+                resolved_by TEXT
             );
             CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_phone);
             CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
             CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
-            CREATE INDEX IF NOT EXISTS idx_auth_otps_email ON auth_otps(email);
             CREATE INDEX IF NOT EXISTS idx_collaborators_session ON session_collaborators(session_id);
             CREATE INDEX IF NOT EXISTS idx_collaborators_user ON session_collaborators(user_id);
+            CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status);
         `);
 
         // Safe migrations for existing databases
@@ -87,116 +84,81 @@ class SessionStore {
             "ALTER TABLE sessions ADD COLUMN subscribers TEXT DEFAULT '[]'",
             "ALTER TABLE sessions ADD COLUMN owner_id TEXT",
             "ALTER TABLE allowed_phones ADD COLUMN user_id TEXT",
+            "ALTER TABLE users ADD COLUMN password_hash TEXT",
+            "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'developer'",
+            "ALTER TABLE users ADD COLUMN created_by TEXT",
         ];
         for (const sql of safeMigrations) {
             try { this.db.exec(sql); } catch (_) { /* column already exists */ }
         }
-        // Add owner_id index AFTER the column migration above
         try { this.db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_owner ON sessions(owner_id)'); } catch (_) { }
     }
 
     // ── Sessions ───────────────────────────────────────────────
 
     createSession(id, userPhone, task, claudeSessionId, workingDir, ownerId = null) {
-        const initialSubscribers = JSON.stringify([String(userPhone)]);
         this.db.prepare(
-            'INSERT INTO sessions (id, user_phone, owner_id, task, claude_session_id, working_dir, subscribers) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).run(id, String(userPhone), ownerId, task, claudeSessionId, workingDir || config.DEFAULT_WORKING_DIR, initialSubscribers);
-        return this.getSession(id);
-    }
-
-    _hydrateSession(session) {
-        if (!session) return session;
-        if (session.subscribers) {
-            try { session.subscribers_arr = JSON.parse(session.subscribers); }
-            catch (e) { session.subscribers_arr = [session.user_phone]; }
-        } else {
-            session.subscribers_arr = [session.user_phone];
-        }
-        return session;
+            `INSERT OR REPLACE INTO sessions (id, user_phone, owner_id, task, claude_session_id, status, working_dir, thread_open)
+             VALUES (?, ?, ?, ?, ?, 'running', ?, 1)`
+        ).run(id, String(userPhone), ownerId, task, claudeSessionId, workingDir);
     }
 
     getSession(id) {
-        return this._hydrateSession(this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(id));
+        return this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
     }
 
-    getActiveSessions(userPhone) {
-        return this.db.prepare(
-            `SELECT * FROM sessions
-             WHERE user_phone = ?
-             AND (status = 'running' OR (status = 'stopped' AND updated_at >= datetime('now', '-1 day')))
-             ORDER BY updated_at DESC`
-        ).all(userPhone).map(s => this._hydrateSession(s));
+    updateSession(id, fields) {
+        const sets = Object.keys(fields).map(k => `${k} = ?`).join(', ');
+        const vals = [...Object.values(fields), id];
+        this.db.prepare(`UPDATE sessions SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...vals);
     }
 
     getAllActiveSessions() {
         return this.db.prepare(
-            `SELECT * FROM sessions
-             WHERE (status = 'running' OR (status = 'stopped' AND updated_at >= datetime('now', '-1 day')))
-             ORDER BY updated_at DESC LIMIT 20`
-        ).all().map(s => this._hydrateSession(s));
-    }
-
-    /** Get all sessions visible to a user (owner + collaborator) */
-    getSessionsForUser(userId, limit = 50, offset = 0) {
-        return this.db.prepare(
-            `SELECT DISTINCT s.*, u.display_name as owner_name, u.email as owner_email
-             FROM sessions s
-             LEFT JOIN users u ON s.owner_id = u.id
-             WHERE s.owner_id = ?
-                OR s.id IN (SELECT session_id FROM session_collaborators WHERE user_id = ?)
-             ORDER BY s.updated_at DESC LIMIT ? OFFSET ?`
-        ).all(userId, userId, limit, offset).map(s => this._hydrateSession(s));
-    }
-
-    /** Get sessions for a phone (existing WhatsApp flow) */
-    getRecentSessions(userPhone, limit = 5) {
-        return this.db.prepare(
-            'SELECT * FROM sessions WHERE user_phone = ? ORDER BY updated_at DESC LIMIT ?'
-        ).all(userPhone, limit).map(s => this._hydrateSession(s));
-    }
-
-    getGlobalRecentSessions(limit = 10) {
-        return this.db.prepare(
             `SELECT s.*, u.display_name as owner_name, u.email as owner_email
              FROM sessions s LEFT JOIN users u ON s.owner_id = u.id
-             ORDER BY s.updated_at DESC LIMIT ?`
-        ).all(limit).map(s => this._hydrateSession(s));
-    }
-
-    updateSession(id, updates) {
-        const fields = [];
-        const values = [];
-        for (const [key, val] of Object.entries(updates)) {
-            if (key === 'subscribers_arr') {
-                fields.push(`subscribers = ?`);
-                values.push(JSON.stringify(val));
-            } else {
-                fields.push(`${key} = ?`);
-                values.push(val);
-            }
-        }
-        fields.push('updated_at = CURRENT_TIMESTAMP');
-        values.push(id);
-        this.db.prepare(`UPDATE sessions SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-    }
-
-    getCurrentThread(userPhone) {
-        const phoneParam = String(userPhone);
-        const likeParam = `%"${phoneParam}"%`;
-        return this._hydrateSession(this.db.prepare(
-            `SELECT * FROM sessions
-             WHERE (user_phone = ? OR subscribers LIKE ?) AND thread_open = 1 AND claude_session_id IS NOT NULL
-             ORDER BY updated_at DESC LIMIT 1`
-        ).get(phoneParam, likeParam));
+             WHERE s.status = 'running' ORDER BY s.updated_at DESC`
+        ).all();
     }
 
     getTotalCost() {
-        const result = this.db.prepare('SELECT SUM(cost_usd) as total FROM sessions').get();
-        return result.total || 0;
+        return this.db.prepare('SELECT COALESCE(SUM(cost_usd), 0) as total FROM sessions').get().total;
     }
 
-    closeThread(userPhone) {
+    getSessionsForUser(userId, limit = 20, offset = 0) {
+        // Returns ALL sessions for logged-in users (any role), with is_mine flag
+        return this.db.prepare(
+            `SELECT s.*,
+                    u.display_name as owner_name,
+                    u.email as owner_email,
+                    CASE WHEN s.owner_id = ? THEN 1 ELSE 0 END as is_mine,
+                    CASE WHEN sc.user_id IS NOT NULL THEN 1 ELSE 0 END as has_access
+             FROM sessions s
+             LEFT JOIN users u ON s.owner_id = u.id
+             LEFT JOIN session_collaborators sc ON sc.session_id = s.id AND sc.user_id = ?
+             ORDER BY s.updated_at DESC LIMIT ? OFFSET ?`
+        ).all(userId, userId, limit, offset);
+    }
+
+    getAllSessions(limit = 20, offset = 0) {
+        return this.db.prepare(
+            `SELECT s.*, u.display_name as owner_name, u.email as owner_email
+             FROM sessions s LEFT JOIN users u ON s.owner_id = u.id
+             ORDER BY s.updated_at DESC LIMIT ? OFFSET ?`
+        ).all(limit, offset);
+    }
+
+    countAllSessions() {
+        return this.db.prepare('SELECT COUNT(*) as count FROM sessions').get().count;
+    }
+
+    setSessionStatus(id, status) {
+        this.db.prepare(
+            'UPDATE sessions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        ).run(status, id);
+    }
+
+    closeThreadsForPhone(userPhone) {
         const phoneParam = String(userPhone);
         const likeParam = `%"${phoneParam}"%`;
         this.db.prepare(
@@ -275,11 +237,17 @@ class SessionStore {
 
     // ── Users ─────────────────────────────────────────────────
 
-    createUser({ email, phone, displayName, isAdmin = 0 }) {
+    /**
+     * Create a user. passwordHash should already be hashed (SHA-256 hex).
+     */
+    createUser({ email, phone, displayName, role = 'developer', isAdmin = 0, passwordHash = null, createdBy = null }) {
         const id = crypto.randomUUID();
         this.db.prepare(
-            'INSERT INTO users (id, email, phone, display_name, is_admin) VALUES (?, ?, ?, ?, ?)'
-        ).run(id, email || null, phone || null, displayName || email || phone || 'User', isAdmin ? 1 : 0);
+            `INSERT INTO users (id, email, phone, display_name, role, is_admin, password_hash, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(id, email || null, phone || null,
+            displayName || email?.split('@')[0] || phone || 'User',
+            role, isAdmin ? 1 : 0, passwordHash, createdBy);
         return this.getUserById(id);
     }
 
@@ -288,17 +256,19 @@ class SessionStore {
     }
 
     getUserByEmail(email) {
-        return this.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        return this.db.prepare('SELECT * FROM users WHERE email = ?').get(email?.toLowerCase().trim());
     }
 
     getUserByPhone(phone) {
         return this.db.prepare('SELECT * FROM users WHERE phone = ?').get(String(phone));
     }
 
-    upsertUserByEmail(email, displayName = null) {
-        let user = this.getUserByEmail(email);
-        if (!user) user = this.createUser({ email, displayName: displayName || email.split('@')[0] });
-        return user;
+    updateUserPassword(userId, passwordHash) {
+        this.db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
+    }
+
+    deleteUser(userId) {
+        this.db.prepare('DELETE FROM users WHERE id = ?').run(userId);
     }
 
     linkPhoneToUser(userId, phone) {
@@ -308,31 +278,36 @@ class SessionStore {
     }
 
     getAllUsers() {
-        return this.db.prepare('SELECT * FROM users ORDER BY created_at DESC').all();
+        return this.db.prepare(
+            `SELECT u.id, u.email, u.phone, u.display_name, u.role, u.is_admin, u.created_at,
+                    creator.display_name as created_by_name
+             FROM users u
+             LEFT JOIN users creator ON u.created_by = creator.id
+             ORDER BY u.created_at DESC`
+        ).all();
     }
 
-    // ── Email OTP Auth ────────────────────────────────────────
-
-    createOtp(email) {
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
-        const id = crypto.randomUUID();
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-        this.db.prepare('UPDATE auth_otps SET used = 1 WHERE email = ? AND used = 0').run(email);
-        this.db.prepare(
-            'INSERT INTO auth_otps (id, email, otp, expires_at) VALUES (?, ?, ?, ?)'
-        ).run(id, email, otp, expiresAt);
-        return otp;
+    getAdmins() {
+        return this.db.prepare('SELECT * FROM users WHERE is_admin = 1').all();
     }
 
-    verifyOtp(email, otp) {
-        const record = this.db.prepare(
-            `SELECT * FROM auth_otps
-             WHERE email = ? AND otp = ? AND used = 0 AND expires_at > datetime('now')
-             ORDER BY created_at DESC LIMIT 1`
-        ).get(email, otp);
-        if (!record) return false;
-        this.db.prepare('UPDATE auth_otps SET used = 1 WHERE id = ?').run(record.id);
-        return true;
+    // ── Password Auth ─────────────────────────────────────────
+
+    /**
+     * Hash a plain-text password using SHA-256. 
+     * For production consider bcrypt; SHA-256+salt is used here for zero-deps simplicity.
+     */
+    static hashPassword(plain) {
+        const salt = 'wa-engineer-salt-2025';
+        return crypto.createHash('sha256').update(salt + plain).digest('hex');
+    }
+
+    verifyPassword(email, plain) {
+        const user = this.getUserByEmail(email);
+        if (!user || !user.password_hash) return null;
+        const hash = SessionStore.hashPassword(plain);
+        if (user.password_hash !== hash) return null;
+        return user;
     }
 
     // ── Session Collaborators ─────────────────────────────────
@@ -363,33 +338,45 @@ class SessionStore {
         ).all(sessionId);
     }
 
-    // ── Access Requests (WhatsApp OTP) ────────────────────────
+    // ── Access Requests (Admin Notifications) ─────────────────
 
-    createAccessRequest(sessionId, requesterPhone) {
+    createAccessRequest(sessionId, requesterId, requesterName, requesterEmail, note = '') {
         const id = crypto.randomUUID();
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
         this.db.prepare(
-            `INSERT INTO access_requests (id, session_id, requester_phone, otp, expires_at) VALUES (?, ?, ?, ?, ?)`
-        ).run(id, sessionId, requesterPhone, otp, expiresAt);
-        return { id, otp };
+            `INSERT INTO access_requests (id, session_id, requester_id, requester_name, requester_email, note)
+             VALUES (?, ?, ?, ?, ?, ?)`
+        ).run(id, sessionId, requesterId, requesterName, requesterEmail, note);
+        return id;
     }
 
-    claimAccessWithOtp(sessionId, phone, otp) {
-        const req = this.db.prepare(
-            `SELECT * FROM access_requests
-             WHERE session_id = ? AND requester_phone = ? AND otp = ? AND status = 'pending' AND expires_at > datetime('now')`
-        ).get(sessionId, phone, otp);
-        if (!req) return false;
-        this.db.prepare(`UPDATE access_requests SET status = 'claimed' WHERE id = ?`).run(req.id);
-        return true;
-    }
-
-    getPendingAccessRequests(sessionId) {
+    getPendingAccessRequests() {
         return this.db.prepare(
-            `SELECT * FROM access_requests WHERE session_id = ? AND status = 'pending' AND expires_at > datetime('now')`
-        ).all(sessionId);
+            `SELECT ar.*, s.task as session_task, s.updated_at as session_updated
+             FROM access_requests ar
+             JOIN sessions s ON ar.session_id = s.id
+             WHERE ar.status = 'pending'
+             ORDER BY ar.created_at DESC`
+        ).all();
     }
+
+    countPendingRequests() {
+        return this.db.prepare(
+            "SELECT COUNT(*) as count FROM access_requests WHERE status = 'pending'"
+        ).get().count;
+    }
+
+    resolveAccessRequest(requestId, resolvedBy, approve = true) {
+        const status = approve ? 'approved' : 'rejected';
+        this.db.prepare(
+            `UPDATE access_requests SET status = ?, resolved_at = CURRENT_TIMESTAMP, resolved_by = ? WHERE id = ?`
+        ).run(status, resolvedBy, requestId);
+        if (approve) {
+            const req = this.db.prepare('SELECT * FROM access_requests WHERE id = ?').get(requestId);
+            if (req) this.addCollaborator(req.session_id, req.requester_id);
+        }
+    }
+
+    getSessionStore() { return this.db; }
 }
 
 export default SessionStore;

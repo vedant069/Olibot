@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp AI Engineer — Login</title>
+    <title>WhatsApp AI Engineer — Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -33,7 +33,7 @@
             border-radius: 20px;
             padding: 48px 40px;
             width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
             text-align: center;
         }
@@ -55,22 +55,28 @@
             color: #fff;
             font-size: 22px;
             font-weight: 700;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .subtitle {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 14px;
-            margin-bottom: 36px;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 13px;
+            margin-bottom: 32px;
         }
 
         label {
             display: block;
             text-align: left;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 6px;
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .field {
+            margin-bottom: 16px;
         }
 
         input {
@@ -84,11 +90,10 @@
             font-family: 'Inter', sans-serif;
             outline: none;
             transition: border-color 0.2s;
-            margin-bottom: 16px;
         }
 
         input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.25);
         }
 
         input:focus {
@@ -96,14 +101,7 @@
             box-shadow: 0 0 0 3px rgba(50, 73, 215, 0.15);
         }
 
-        input[type="number"] {
-            letter-spacing: 8px;
-            font-size: 22px;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        button {
+        button.primary {
             width: 100%;
             background: linear-gradient(135deg, #3249d7, #5a6cf0);
             color: #fff;
@@ -116,38 +114,18 @@
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 4px 16px rgba(50, 73, 215, 0.4);
+            margin-top: 8px;
         }
 
-        button:hover {
+        button.primary:hover {
             transform: translateY(-1px);
             box-shadow: 0 8px 24px rgba(50, 73, 215, 0.5);
         }
 
-        button:active {
-            transform: none;
-        }
-
-        button:disabled {
+        button.primary:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-        }
-
-        .back-btn {
-            background: none;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 13px;
-            box-shadow: none;
-            margin-top: 10px;
-            padding: 8px;
-            font-weight: 500;
-        }
-
-        .back-btn:hover {
-            color: #fff;
-            transform: none;
-            box-shadow: none;
-            background: rgba(255, 255, 255, 0.05);
         }
 
         .error {
@@ -157,27 +135,8 @@
             border-radius: 8px;
             padding: 10px 14px;
             font-size: 13px;
-            margin-bottom: 14px;
-            display: none;
-        }
-
-        .success {
-            color: #7bffb8;
-            background: rgba(100, 255, 160, 0.1);
-            border: 1px solid rgba(100, 255, 160, 0.2);
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 13px;
-            margin-bottom: 14px;
-            display: none;
-        }
-
-        .otp-hint {
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 12px;
-            margin-top: -10px;
             margin-bottom: 16px;
-            text-align: left;
+            display: none;
         }
     </style>
 </head>
@@ -189,124 +148,51 @@
         <p class="subtitle">Sign in to your workspace</p>
 
         <div id="error-msg" class="error"></div>
-        <div id="success-msg" class="success"></div>
 
-        <!-- Step 1: Email entry -->
-        <div id="step-email">
-            <label for="email-input">Email address</label>
-            <input id="email-input" type="email" placeholder="you@company.com" autocomplete="email" />
-            <button id="send-otp-btn" onclick="sendOtp()">Continue with Email →</button>
+        <div class="field">
+            <label for="email-input">Email</label>
+            <input id="email-input" type="email" placeholder="you@company.com" autocomplete="email"
+                onkeydown="if(event.key==='Enter') document.getElementById('pass-input').focus()">
         </div>
-
-        <!-- Step 2: OTP entry -->
-        <div id="step-otp" style="display:none">
-            <p class="otp-hint" id="otp-hint">We sent a 6-digit code to your inbox.</p>
-            <label for="otp-input">Verification code</label>
-            <input id="otp-input" type="number" placeholder="000000" maxlength="6" autocomplete="one-time-code"
-                onkeydown="if(event.key==='Enter') verifyOtp()" />
-            <button id="verify-otp-btn" onclick="verifyOtp()">Verify & Sign In</button>
-            <button class="back-btn" onclick="backToEmail()">← Change email</button>
+        <div class="field">
+            <label for="pass-input">Password</label>
+            <input id="pass-input" type="password" placeholder="Your password" autocomplete="current-password"
+                onkeydown="if(event.key==='Enter') login()">
         </div>
+        <button class="primary" id="login-btn" onclick="login()">Sign In →</button>
     </div>
 
     <script>
-        let currentEmail = '';
-
-        function showError(msg) {
-            const el = document.getElementById('error-msg');
-            el.textContent = msg;
-            el.style.display = 'block';
-            document.getElementById('success-msg').style.display = 'none';
-        }
-        function showSuccess(msg) {
-            const el = document.getElementById('success-msg');
-            el.textContent = msg;
-            el.style.display = 'block';
-            document.getElementById('error-msg').style.display = 'none';
-        }
-        function clearMessages() {
-            document.getElementById('error-msg').style.display = 'none';
-            document.getElementById('success-msg').style.display = 'none';
-        }
-
-        async function sendOtp() {
+        async function login() {
             const email = document.getElementById('email-input').value.trim();
-            if (!email || !email.includes('@')) return showError('Please enter a valid email address.');
-
-            clearMessages();
-            const btn = document.getElementById('send-otp-btn');
-            btn.disabled = true;
-            btn.textContent = 'Sending...';
-
+            const password = document.getElementById('pass-input').value;
+            const errEl = document.getElementById('error-msg');
+            errEl.style.display = 'none';
+            if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.style.display = 'block'; return; }
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true; btn.textContent = 'Signing in...';
             try {
-                const res = await fetch('/api/auth/email/request', {
-                    method: 'POST',
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
+                    body: JSON.stringify({ email, password })
                 });
                 const data = await res.json();
                 if (data.error) {
-                    showError(data.error);
-                    btn.disabled = false;
-                    btn.textContent = 'Continue with Email →';
+                    errEl.textContent = data.error;
+                    errEl.style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'Sign In →';
                     return;
                 }
-                currentEmail = email;
-                document.getElementById('otp-hint').textContent = `We sent a 6-digit code to ${email}`;
-                document.getElementById('step-email').style.display = 'none';
-                document.getElementById('step-otp').style.display = 'block';
-                showSuccess('Code sent! Check your inbox.');
-                setTimeout(() => document.getElementById('otp-input').focus(), 100);
+                // Redirect to base path
+                const basePath = window.location.pathname.replace(/\/login\.html$/, '') || '/';
+                window.location.href = basePath + '/';
             } catch (e) {
-                showError('Network error. Please try again.');
-                btn.disabled = false;
-                btn.textContent = 'Continue with Email →';
+                errEl.textContent = 'Network error. Please try again.';
+                errEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = 'Sign In →';
             }
         }
-
-        function backToEmail() {
-            clearMessages();
-            document.getElementById('step-otp').style.display = 'none';
-            document.getElementById('step-email').style.display = 'block';
-            document.getElementById('send-otp-btn').disabled = false;
-            document.getElementById('send-otp-btn').textContent = 'Continue with Email →';
-        }
-
-        async function verifyOtp() {
-            const otp = document.getElementById('otp-input').value.trim();
-            if (!otp || otp.length < 6) return showError('Please enter the 6-digit code.');
-
-            clearMessages();
-            const btn = document.getElementById('verify-otp-btn');
-            btn.disabled = true;
-            btn.textContent = 'Verifying...';
-
-            try {
-                const res = await fetch('/api/auth/email/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: currentEmail, otp }),
-                    credentials: 'include'
-                });
-                const data = await res.json();
-                if (data.error) {
-                    showError(data.error);
-                    btn.disabled = false;
-                    btn.textContent = 'Verify & Sign In';
-                    return;
-                }
-                showSuccess('Logged in! Redirecting...');
-                // Navigate to base path dynamically (works under /sessions/ or /)
-                const basePath = window.location.pathname.replace(/\/[^/]*\.html$/, '/').replace(/\/$/, '') || '/';
-                setTimeout(() => window.location.href = basePath || '/', 800);
-            } catch (e) {
-                showError('Network error. Please try again.');
-                btn.disabled = false;
-                btn.textContent = 'Verify & Sign In';
-            }
-        }
-
-        // Auto-focus on load
         document.getElementById('email-input').focus();
     </script>
 </body>
