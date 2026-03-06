@@ -188,7 +188,8 @@
                 const basePath = window.location.pathname.replace(/\/login\.html$/, '') || '/';
                 window.location.href = basePath + '/';
             } catch (e) {
-                errEl.textContent = 'Network error. Please try again.';
+                console.error("Login exception:", e);
+                errEl.textContent = 'Network error: ' + (e.message || String(e));
                 errEl.style.display = 'block';
                 btn.disabled = false; btn.textContent = 'Sign In →';
             }
