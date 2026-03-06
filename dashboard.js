@@ -238,7 +238,7 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
             const startInstruction = /^(start fresh|new task|ignore previous)/i.test(text) ? text : `[start fresh] ${text}`;
             const tokens = Array.isArray(req.body.imageTokens) ? req.body.imageTokens : (req.body.imageToken ? [req.body.imageToken] : []);
             const imagePath = tokens.map(t => { const p = pendingImages.get(t); pendingImages.delete(t); return p; }).filter(Boolean)[0] || null;
-            const result = await messageHandler({ phone: String(phone), text: startInstruction, pushName: req.user.displayName || 'Dashboard', imagePath, ownerId: req.user.id });
+            const result = await messageHandler({ isWeb: true, phone: String(phone), text: startInstruction, pushName: req.user.displayName || 'Dashboard', imagePath, ownerId: req.user.id });
             res.json({ success: true, sessionId: result?.sessionId });
         } catch (err) { res.status(500).json({ error: err.message }); }
     });
@@ -256,7 +256,7 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
             if (!isOwner && !isCollab && !req.user.isAdmin) return res.status(403).json({ error: 'You do not have access to this session. Request access first.' });
             const tokens = Array.isArray(req.body.imageTokens) ? req.body.imageTokens : (req.body.imageToken ? [req.body.imageToken] : []);
             const imagePath = tokens.map(t => { const p = pendingImages.get(t); pendingImages.delete(t); return p; }).filter(Boolean)[0] || null;
-            await messageHandler({ phone: String(phone), text: `[resume ${sessionId}] ${text}`, pushName: req.user.displayName || 'Dashboard', imagePath });
+            await messageHandler({ isWeb: true, phone: String(phone), text: `[resume ${sessionId}] ${text}`, pushName: req.user.displayName || 'Dashboard', imagePath });
             res.json({ success: true });
         } catch (err) { res.status(500).json({ error: err.message }); }
     });

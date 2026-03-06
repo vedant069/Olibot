@@ -186,9 +186,9 @@ claude.on('session_error', async ({ sessionId, error }) => {
 
 // ── WhatsApp message handler ──────────────────────────────────
 
-export async function handleIncomingMessage({ phone, text, pushName, groupJid, imagePath = null }) {
+export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text, pushName, groupJid, imagePath = null }) {
     try {
-        const isWeb = pushName === 'Web Dashboard';
+        const isWeb = explicitIsWeb || pushName === 'Web Dashboard';
         // Use groupJid as the session owner if in a group, otherwise use personal phone
         const threadKey = groupJid || phone;
         // Reply to the group if we are in one, otherwise reply to the direct message
