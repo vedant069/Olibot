@@ -19,6 +19,7 @@ export default class OpenCodeManager extends EventEmitter {
             this.store.createSession(sessionId, threadKey, task, targetDir, ownerId);
 
             const args = [
+                'run',
                 task
             ];
 
@@ -27,7 +28,7 @@ export default class OpenCodeManager extends EventEmitter {
                 cols: 120,
                 rows: 30,
                 cwd: targetDir,
-                env: process.env
+                env: { ...process.env, CI: '1', PAGER: 'cat' }
             });
 
             this.sessions.set(sessionId, ptyProcess);
@@ -66,10 +67,16 @@ export default class OpenCodeManager extends EventEmitter {
 
         this.store.updateSession(sessionId, { status: 'running', updated_at: new Date().toISOString() });
 
-        const ptyProcess = pty.spawn(config.CLAUDE_BIN, [followUp], {
+        const args = [
+            'run',
+            '-c', '-s', sessionId,
+            followUp
+        ];
+
+        const ptyProcess = pty.spawn(config.CLAUDE_BIN, args, {
             name: 'xterm-color', cols: 120, rows: 30,
             cwd: session.working_dir || config.DEFAULT_WORKING_DIR,
-            env: process.env
+            env: { ...process.env, CI: '1', PAGER: 'cat' }
         });
 
         this.sessions.set(sessionId, ptyProcess);
