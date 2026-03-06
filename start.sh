@@ -11,7 +11,9 @@ if [ -f .env ]; then
     export $(grep -v '^#' .env | tr -d '\r' | xargs)
     echo "✅ Loaded environment variables from .env"
 else
-    echo "⚠️  No .env file found! Make sure you copied .env.example"
+    echo "❌ No .env file found!"
+    echo "👉 Please run './setup.sh' to configure your environment first."
+    exit 1
 fi
 
 # Run npm install to ensure dependencies are up-to-date
