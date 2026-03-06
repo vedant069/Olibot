@@ -37,12 +37,12 @@ class ClaudeManager extends EventEmitter {
      * Claude creates its OWN session ID (returned in stream-json result event),
      * which we store in SQLite for future --resume calls.
      */
-    async startSession(userPhone, task, workingDir, imagePath = null) {
+    async startSession(userPhone, task, workingDir, imagePath = null, ownerId = null) {
         const sessionId = `WA-${Date.now().toString(36)}`;
         const dir = workingDir || config.DEFAULT_WORKING_DIR;
 
         // claude_session_id starts null — filled once Claude emits its session_id
-        this.store.createSession(sessionId, userPhone, task, null, dir);
+        this.store.createSession(sessionId, userPhone, task, null, dir, ownerId);
         this.store.addMessage(sessionId, 'user', task);
 
         this._spawnNew(sessionId, task, dir, imagePath);

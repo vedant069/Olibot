@@ -126,10 +126,21 @@ class SessionStore {
         ).get(phoneParam);
     }
 
-    updateSession(id, fields) {
-        const sets = Object.keys(fields).map(k => `${k} = ?`).join(', ');
-        const vals = [...Object.values(fields), id];
-        this.db.prepare(`UPDATE sessions SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...vals);
+    updateSession(id, updates) {
+        const fields = [];
+        const values = [];
+        for (const [key, val] of Object.entries(updates)) {
+            if (key === 'subscribers_arr') {
+                fields.push(`subscribers = ?`);
+                values.push(JSON.stringify(val));
+            } else {
+                fields.push(`${key} = ?`);
+                values.push(val);
+            }
+        }
+        if (fields.length === 0) return;
+        values.push(id);
+        this.db.prepare(`UPDATE sessions SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...values);
     }
 
     getAllActiveSessions() {

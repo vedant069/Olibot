@@ -186,7 +186,7 @@ claude.on('session_error', async ({ sessionId, error }) => {
 
 // ── WhatsApp message handler ──────────────────────────────────
 
-export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text, pushName, groupJid, imagePath = null }) {
+export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text, pushName, groupJid, imagePath = null, ownerId = null }) {
     try {
         const isWeb = explicitIsWeb || pushName === 'Web Dashboard';
         // Use groupJid as the session owner if in a group, otherwise use personal phone
@@ -247,7 +247,7 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                 // Close any existing thread before starting fresh
                 if (currentThread) store.closeThread(threadKey);
                 const task = intent.task || text;
-                const { sessionId } = await claude.startSession(threadKey, task, null, imagePath);
+                const { sessionId } = await claude.startSession(threadKey, task, null, imagePath, ownerId);
 
                 if (isWeb) {
                     webMutedSessions.add(sessionId);
