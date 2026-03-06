@@ -102,6 +102,30 @@ From any phone listed in your `ALLOWED_PHONES` environment variable, send a mess
 
 ---
 
+## 🔄 Resetting WhatsApp Authentication
+
+If you need to switch the connected WhatsApp number (e.g., in a UAT or Staging environment where you've already scanned the QR code once), you must clear the saved authentication state.
+
+Run the following commands on your server:
+
+```bash
+# Move to the project directory
+cd whatsapp-engineer
+
+# Stop the running application
+pkill -f "node index.js"
+
+# Delete the Baileys auth credentials folder
+rm -rf auth_info/
+
+# Restart the application
+./start.sh
+```
+
+Upon restart, `tail -f /tmp/wa-engineer.log` will display a fresh QR code for you to scan with the new device.
+
+---
+
 ## 🌐 Web Dashboard
 
 The application runs a lightweight local dashboard on **port 18790** by default.
