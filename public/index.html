@@ -970,14 +970,23 @@
             document.getElementById('workspace-status-dot').className = "w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(50,73,215,0.6)]";
             document.getElementById('workspace-status-dot').style.background = '#3249d7';
 
+            const phoneOptions = document.getElementById('user-phone').innerHTML;
             const content = document.getElementById('workspace-content');
             content.innerHTML = `
-                <div class="max-w-3xl mx-auto py-8 sm:py-12 md:py-24 text-center px-4 animate-[fadeIn_0.5s_ease-out]">
-                    <div class="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl mx-auto flex items-center justify-center mb-6 sm:mb-8 border shadow-2xl" style="background: rgba(50,73,215,0.1); border-color: rgba(50,73,215,0.2); box-shadow: 0 25px 50px rgba(50,73,215,0.1); color: #3249d7;">
+                <div class="max-w-3xl mx-auto py-8 sm:py-12 md:py-16 text-center px-4 animate-[fadeIn_0.5s_ease-out]">
+                    <div class="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl mx-auto flex items-center justify-center mb-6 border shadow-2xl" style="background: rgba(50,73,215,0.1); border-color: rgba(50,73,215,0.2); box-shadow: 0 25px 50px rgba(50,73,215,0.1); color: #3249d7;">
                         <svg class="w-7 h-7 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <h2 class="text-xl sm:text-3xl font-bold t-text-primary mb-3 sm:mb-4 tracking-tight" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
-                    <p class="t-text-secondary text-sm sm:text-lg max-w-xl mx-auto leading-relaxed">Describe your feature or bug fix. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
+                    <h2 class="text-xl sm:text-3xl font-bold t-text-primary mb-3 tracking-tight" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
+                    <p class="t-text-secondary text-sm sm:text-base max-w-xl mx-auto mb-6 leading-relaxed">Describe your feature or bug fix. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
+                    
+                    <div class="mx-auto max-w-sm text-left bg-white/50 dark:bg-[#1a1c23]/50 p-4 border rounded-xl" style="border-color: rgba(50,73,215,0.15)">
+                        <label class="block text-xs font-bold t-text-primary uppercase tracking-wider mb-2">Map task to phone</label>
+                        <select id="new-task-phone" class="t-input border rounded-lg text-sm px-3 py-2 w-full focus:ring-1 focus:ring-[#3249d7] outline-none bg-white dark:bg-[#1a1c23]">
+                            ${phoneOptions}
+                        </select>
+                        <p class="text-[10px] t-text-muted mt-2 italic">This session will be exclusively mapped to your email and this number. Others must request access.</p>
+                    </div>
                 </div>
             `;
 
@@ -1141,7 +1150,14 @@
             const val = textarea.value.trim();
             if (!val && !pendingImages.length) return;   // need text OR image
 
-            const phone = document.getElementById('user-phone').value;
+            let phone = document.getElementById('user-phone').value;
+            if (isCreatingNew) {
+                const newDropdown = document.getElementById('new-task-phone');
+                if (newDropdown && newDropdown.value) {
+                    phone = newDropdown.value;
+                }
+            }
+
             if (!phone) {
                 alert("Please add an authorized phone number first in the 'Manage numbers' section.");
                 return;
