@@ -390,21 +390,21 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
             case 'LIST_SESSIONS': {
                 const recent = store.getGlobalRecentSessions(15);
                 if (recent.length === 0) {
-                    await wa.sendMessage(replyTo, "No sessions found in history. Send a task to start one!");
+                    await sendContent(replyTo, "No sessions found in history. Send a task to start one!");
                     break;
                 }
                 const list = recent.map(s => {
                     const icon = s.status === 'running' ? '🟢' : '🔴';
                     return `${icon} *${s.id}* — ${(s.task || '').slice(0, 50)}`;
                 }).join('\n');
-                await wa.sendMessage(replyTo, `📋 *Global Recent Sessions:*\n\n${list}`);
+                await sendContent(replyTo, `📋 *Global Recent Sessions:*\n\n${list}`);
                 break;
             }
 
             case 'STATUS': {
                 const allRunning = store.getAllActiveSessions();
                 if (allRunning.length === 0) {
-                    await wa.sendMessage(replyTo, "No sessions are currently running.");
+                    await sendContent(replyTo, "No sessions are currently running.");
                     break;
                 }
                 const statuses = allRunning.map(s => {
@@ -412,19 +412,19 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                     const preview = claude.getLastOutput(s.id)?.slice(-200) || 'No output yet';
                     return `🟢 *${s.id}*\nTask: ${(s.task || '').slice(0, 60)}\nRunning in bot memory: ${running}\nLast output: ${preview}`;
                 }).join('\n\n');
-                await wa.sendMessage(replyTo, statuses);
+                await sendContent(replyTo, statuses);
                 break;
             }
 
             case 'GET_COST': {
                 const totalCost = store.getTotalCost();
                 const prefix = intent.reply ? intent.reply + '\n\n' : '';
-                await wa.sendMessage(replyTo, `${prefix}💸 *Total API Spend:* $${totalCost.toFixed(4)}`);
+                await sendContent(replyTo, `${prefix}💸 *Total API Spend:* $${totalCost.toFixed(4)}`);
                 break;
             }
 
             case 'CHAT': {
-                await wa.sendMessage(replyTo, intent.reply || "How can I help? Send me a coding task to get started! 🚀");
+                await sendContent(replyTo, intent.reply || "How can I help? Send me a coding task to get started! 🚀");
                 break;
             }
 
@@ -432,7 +432,7 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                 if (currentThread) store.closeThread(threadKey);
                 const task = intent.task || text;
                 const { sessionId } = await claude.startAutonomousSession(threadKey, task);
-                await wa.sendMessage(replyTo,
+                await sendContent(replyTo,
                     (intent.reply || '🚀 Starting Ralph Wiggum Autonomous Agent...') +
                     `\n📋 Session ID: *${sessionId}*\nRalph will self-loop and run background commands.`
                 );
@@ -440,12 +440,12 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
             }
 
             default:
-                await wa.sendMessage(replyTo, "Send me a coding task or type 'sessions' to see your history.");
+                await sendContent(replyTo, "Send me a coding task or type 'sessions' to see your history.");
                 return { action: intent.action, status: "default" };
         }
     } catch (err) {
         console.error('[Main] Error:', err);
-        await wa.sendMessage(groupJid || phone, `❌ Error: ${err.message}`).catch(() => { });
+        if (wa) await wa.sendMessage(groupJid || phone, `❌ Error: ${err.message}`).catch(() => { });
         return { error: err.message };
     }
 }
