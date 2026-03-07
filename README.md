@@ -82,10 +82,11 @@ Here are the officially supported MCP connectors you can install:
 
 ## 🖥️ Running the Application
 
-We've provided a simple startup script that automatically handles loading the `.env` variables, updating your GitHub knowledge base, and launching the application in the background.
+We've provided a setup wizard to handle environment variables and dependencies, followed by a startup script that launches the application in the background.
 
 ```bash
-chmod +x start.sh
+chmod +x setup.sh start.sh
+./setup.sh
 ./start.sh
 ```
 
