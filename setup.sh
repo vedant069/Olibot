@@ -44,9 +44,13 @@ install_deps() {
         fail "Node.js not found! Install Node.js 18+ first:\n  curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -\n  sudo apt-get install -y nodejs"
     fi
     ok "Node.js $(node -v) found"
-    gum spin --spinner dot --title "Installing npm packages..." -- npm install
+    gum spin --spinner dot --title "Installing npm packages..." -- npm install || true
     ok "npm packages installed"
-    npm rebuild node-pty 2>/dev/null && ok "Native modules ready" || warn "node-pty rebuild failed (build tools may be required — not critical)"
+    if npm rebuild node-pty 2>/dev/null; then
+        ok "Native modules ready"
+    else
+        warn "node-pty rebuild failed (build tools may be required — not critical)"
+    fi
 }
 
 # ── Step 2: Check Claude Code ─────────────────────────────────
