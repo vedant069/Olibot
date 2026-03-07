@@ -190,6 +190,50 @@ EOF
     ok ".env created (chmod 600)"
 }
 
+# ── Step 4.5: Configure Repositories ──────────────────────────
+configure_repos() {
+    step 4.5 "Configure Workspaces (Git)"
+
+    if ! command -v git &> /dev/null; then
+        warn "Git is not installed. We will attempt to install it..."
+        if command -v apt-get &>/dev/null; then
+            sudo apt-get update -q && sudo apt-get install -y -q git
+        elif command -v yum &>/dev/null; then
+            sudo yum install -y git
+        fi
+        if ! command -v git &> /dev/null; then
+            fail "Git installation failed. Please install git manually to clone repositories."
+            return
+        fi
+    fi
+
+    echo -e "${YELLOW}You can optionally clone GitHub repositories into your working directory ($WORKING_DIR).${NC}"
+
+    while gum confirm "Do you want to clone a Git repository now?"; do
+        REPO_URL=$(gum input --placeholder "https://github.com/org/repo.git")
+        if [ -n "$REPO_URL" ]; then
+            REPO_FOLDER=$(gum input --placeholder "Folder name to clone into (e.g. backend, frontend, or . for root)")
+            if [ -n "$REPO_FOLDER" ]; then
+                TARGET_DIR="$WORKING_DIR"
+                if [ "$REPO_FOLDER" != "." ]; then
+                    TARGET_DIR="$WORKING_DIR/$REPO_FOLDER"
+                fi
+                
+                # Ensure the parent directory exists
+                mkdir -p "$TARGET_DIR"
+                gum spin --spinner dot --title "Cloning $REPO_URL into $TARGET_DIR..." -- git clone "$REPO_URL" "$TARGET_DIR"
+                if [ $? -eq 0 ]; then
+                    ok "Cloned $REPO_URL successfully!"
+                else
+                    warn "Failed to clone $REPO_URL. Ensure you have access and the folder is empty."
+                fi
+            else
+                warn "Folder name cannot be empty."
+            fi
+        fi
+    done
+}
+
 # ── Step 5: Start ─────────────────────────────────────────────
 start_service() {
     step 5 "Start the Service"
@@ -216,4 +260,5 @@ install_deps
 check_claude
 choose_mode       # ← Mode is asked FIRST
 configure_env     # ← Env questions depend on mode
+configure_repos   # ← Clone repos into the newly configured working directory
 start_service
