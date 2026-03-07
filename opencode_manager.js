@@ -40,6 +40,7 @@ export default class OpenCodeManager extends EventEmitter {
             ptyProcess.onData((data) => {
                 const text = data.toString();
                 resultBuffer += text;
+                console.log(`[OpenCode RAW] ${text.replace(/\r/g, '').replace(/\n/g, '\\n')}`);
                 // Since OpenCode doesn't have native headless JSON streaming,
                 // we send intermittent status updates visually
                 if (text.includes('Thinking') || text.includes('Running')) {
@@ -96,6 +97,7 @@ export default class OpenCodeManager extends EventEmitter {
         ptyProcess.onData((data) => {
             const text = data.toString();
             resultBuffer += text;
+            console.log(`[OpenCode RAW] ${text.replace(/\r/g, '').replace(/\n/g, '\\n')}`);
         });
 
         ptyProcess.onExit(({ exitCode }) => {
