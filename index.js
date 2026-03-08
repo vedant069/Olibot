@@ -459,7 +459,7 @@ if (config.WHATSAPP_ENABLED === false) {
     console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'none'}`);
     console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
     console.log(`🔧 Claude binary: ${config.CLAUDE_BIN}`);
-    startDashboard(store, handleIncomingMessage, 18790, null);
+    startDashboard(store, handleIncomingMessage, 18790, null, claude);
     console.log('🌐 Dashboard running at http://localhost:18790');
 } else {
     // WhatsApp mode: wait for QR scan
@@ -469,7 +469,7 @@ if (config.WHATSAPP_ENABLED === false) {
         console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'OPEN (no filter)'}`);
         console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
         console.log(`🔧 Claude binary: ${config.CLAUDE_BIN}`);
-        startDashboard(store, handleIncomingMessage, 18790, wa);
+        startDashboard(store, handleIncomingMessage, 18790, wa, claude);
     });
 
     console.log('Starting OliBot...');

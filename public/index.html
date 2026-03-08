@@ -794,6 +794,13 @@
                                     d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                             </svg>
                         </button>
+                        <button id="chat-stop-btn" onclick="stopSession()" title="Stop running session"
+                            class="absolute right-2 md:right-3 bottom-2 md:bottom-2.5 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-sm hidden cursor-pointer">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                stroke-width="2">
+                                <rect x="6" y="6" width="12" height="12" fill="currentColor"></rect>
+                            </svg>
+                        </button>
                         <button id="chat-send-btn"
                             class="absolute right-2 md:right-3 bottom-2 md:bottom-2.5 p-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
                             <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -1043,7 +1050,18 @@
             if (loopInterval) clearInterval(loopInterval);
             loopInterval = setInterval(pollMessages, 3000);
 
-            textarea.disabled = false;
+            if (status === 'running') {
+                textarea.disabled = true;
+                textarea.placeholder = "Session is currently running...";
+                document.getElementById('chat-stop-btn').classList.remove('hidden');
+                sendBtn.classList.add('hidden');
+            } else {
+                textarea.disabled = false;
+                textarea.placeholder = "Type a message… or paste/drop an image";
+                document.getElementById('chat-stop-btn').classList.add('hidden');
+                sendBtn.classList.remove('hidden');
+            }
+
             textarea.value = '';
             sendBtn.disabled = true;
             textarea.style.height = 'auto';
@@ -1236,6 +1254,32 @@
             } finally {
                 textarea.disabled = false;
                 textarea.focus();
+            }
+        }
+
+        async function stopSession() {
+            if (!currentSessionId) return;
+            const stopBtn = document.getElementById('chat-stop-btn');
+            stopBtn.disabled = true;
+            stopBtn.classList.add('opacity-50');
+            try {
+                const res = await fetch(`/api/sessions/${currentSessionId}/stop`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    textarea.disabled = false;
+                    textarea.placeholder = "Type a message… or paste/drop an image";
+                    stopBtn.classList.add('hidden');
+                    sendBtn.classList.remove('hidden');
+                    fetchSessions(currentSessionPage);
+                    pollMessages();
+                } else {
+                    alert('Error stopping session: ' + data.error);
+                }
+            } catch (err) {
+                console.error('Failed to stop session', err);
+            } finally {
+                stopBtn.disabled = false;
+                stopBtn.classList.remove('opacity-50');
             }
         }
 

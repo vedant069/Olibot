@@ -24,7 +24,7 @@ function storePendingImage(filePath) {
 }
 export { pendingImages };
 
-export function startDashboard(store, messageHandler, port = 18790, wa = null) {
+export function startDashboard(store, messageHandler, port = 18790, wa = null, executionEngine = null) {
     const app = express();
     app.use(cors({ origin: true, credentials: true }));
     app.use(express.json({ strict: false }));
@@ -240,6 +240,15 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
             const imagePath = tokens.map(t => { const p = pendingImages.get(t); pendingImages.delete(t); return p; }).filter(Boolean)[0] || null;
             const result = await messageHandler({ isWeb: true, phone: String(phone), text: startInstruction, pushName: req.user.displayName || 'Dashboard', imagePath, ownerId: req.user.id });
             res.json({ success: true, sessionId: result?.sessionId });
+        } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
+    app.post('/api/sessions/:id/stop', requireAuth, (req, res) => {
+        try {
+            if (!executionEngine) return res.status(500).json({ error: 'Execution engine not attached' });
+            const sessionId = req.params.id;
+            const costUsd = executionEngine.stopSession(sessionId);
+            res.json({ success: true, costUsd });
         } catch (err) { res.status(500).json({ error: err.message }); }
     });
 
